@@ -107,8 +107,10 @@ def process_file(input_file_name, output_file_name):
 	angle_matrix_dataframe = angle_matrix_dataframe.apply(np.arccos)
 
 	### Write to output file ###
-	distance_matrix_dataframe.to_csv(output_file_name, header=False, index=None, sep="\t")
-	angle_matrix_dataframe.to_csv(output_file_name, mode='a', header=False, index=None, sep="\t")
+	output_file_path = Path(output_file_name)
+
+	distance_matrix_dataframe.to_csv(output_file_path.with_suffix('.dist.dat'), header=False, index=None, sep="\t")
+	angle_matrix_dataframe.to_csv(output_file_path.with_suffix('.ang.dat'), header=False, index=None, sep="\t")
 
 	### Delete the temporary file after writing to output ###
 	# https://stackoverflow.com/a/42641792
