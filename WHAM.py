@@ -1,6 +1,8 @@
 import numpy as np
 import os
 
+import matplotlib.pyplot as plt
+
 class Clone:
 	# For a single clone
 	def __init__(self):
@@ -37,7 +39,7 @@ class Clone:
 
 		return wDotIntegral[0]
 
-class Histogram:
+class Alpha:
 	# For a single value of alpha
 	def __init__(self):
 		# alpha
@@ -56,10 +58,10 @@ class Histogram:
 		self.num_samples = self.get_num_samples()
 
 		# n_a
-		self.wDot_hist = self.calculate_wDot_hist()
+		self.wDot_data_all_clones = self.combine_wDot_data()
 
 		#f_a
-		#self.norm_factor_array = self.calculate_norm_factors()
+		self.norm_factor = 1
 
 	def get_bias_param(self):
 		with open('alpha.txt', 'r') as file:
@@ -112,7 +114,7 @@ class Histogram:
 
 		return num_samples
 
-	def calculate_wDot_hist(self):
+	def combine_wDot_data(self):
 		wDots = []
 
 		for clone in self.clone_array:
@@ -120,23 +122,67 @@ class Histogram:
 
 		wDots_array = np.array(wDots).flatten()
 
-		wDots_hist = np.histogram(wDots_array)
+		return wDots_array
 
-		print(wDots_hist[0])
+class Histogram():
+	def __init__(self):
+		self.alpha_array = self.get_alpha_data()
 
-		return wDots_hist[0]
+		self.wDot_data_all_alphas = self.combine_wDot_data()
 
-	def calculate_norm_factors(self):
-		pass
+		self.wDot_hist, self.wDot_hist_bin_edges = \
+			np.histogram(self.wDot_data_all_alphas, bins="auto")
+
+		self.prob_dist = self.calculate_prob_dist()
+
+	def get_alpha_data(self):
+		root_dir = os.getcwd()
+
+		alpha_array = []
+
+		with os.scandir(root_dir) as entries:
+			for entry in entries:
+				if entry.is_dir():
+					os.chdir(entry)
+					AlphaInstance = Alpha()
+					alpha_array.append(AlphaInstance)
+
+		return alpha_array
+
+	def combine_wDot_data(self):
+		wDots = []
+
+		for alpha in self.alpha_array:
+			wDots.append(alpha.wDot_data_all_clones)
+
+		wDots_array = np.array(wDots).flatten()
+
+		return wDots_array
 
 	def calculate_prob_dist(self):
-		pass
+		denominator = 0
+
+		for alpha in self.alpha_array:
+			denominator += alpha.num_samples * alpha.norm_factor * np.sum(alpha.bias_factor_array)
+
+		return self.wDot_hist/denominator
+
+	def calculate_norm_factors(self):
+		for alpha in self.alpha_array:
+			alpha.norm_factor = 1 / (np.sum(alpha.bias_factor_array)*np.sum(self.prob_dist))
+
 
 	def monitor_convergence(self):
 		pass
 
-class WHAM():
-	def __init__(self):
-		print("Initializing WHAM class")
+	def iterate_WHAM(self):
+		for i in range(0,10):
+			self.prob_dist = self.calculate_prob_dist()
+			self.calculate_norm_factors()
+
+		plt.plot(self.wDot_hist_bin_edges[:-1], self.prob_dist)
+		plt.show()
 
 myHistogram = Histogram()
+
+myHistogram.iterate_WHAM()
