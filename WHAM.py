@@ -205,16 +205,8 @@ myHistogram = Histogram()
 
 myHistogram.iterate_WHAM()
 
-
 with open ("300_P_avg_std.dat", "r") as file:
 	wDots_p_dist_unbiased = np.array([[float(x) for x in line.split()] for line in file])
-
-bw=wDots_p_dist_unbiased[1,0]-wDots_p_dist_unbiased[0,0]
-
-integral=np.sum(np.array([i*bw for i in wDots_p_dist_unbiased[:,1]]))
-
-print(integral)
-
 
 plt.plot(myHistogram.wDot_hist_bin_centers, myHistogram.prob_dist, label="WHAM")
 plt.plot(wDots_p_dist_unbiased[:,0], wDots_p_dist_unbiased[:,1], label="unbiased, k=3")
