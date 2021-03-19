@@ -147,6 +147,8 @@ class Histogram():
 					AlphaInstance = Alpha()
 					alpha_array.append(AlphaInstance)
 
+		os.chdir(root_dir)
+
 		return alpha_array
 
 	def combine_wDot_data(self):
@@ -188,7 +190,9 @@ myHistogram = Histogram()
 myHistogram.iterate_WHAM()
 
 
+with open ("300_P_avg_std.dat", "r") as file:
+	wDots_p_dist_unbiased = np.array([[float(x) for x in line.split()] for line in file])
 
 plt.plot(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist)
-
+plt.plot(wDots_p_dist_unbiased[:,0], wDots_p_dist_unbiased[:,1])
 plt.show()
