@@ -133,6 +133,9 @@ class Histogram():
 		self.wDot_hist, self.wDot_hist_bin_edges = \
 			np.histogram(self.wDot_data_all_alphas, bins="auto")
 
+		self.wDot_hist_bin_centers = \
+			0.5*(self.wDot_hist_bin_edges[1:] + self.wDot_hist_bin_edges[:-1])
+
 		self.prob_dist = self.calculate_prob_dist()
 
 	def get_alpha_data(self):
@@ -152,35 +155,48 @@ class Histogram():
 		return alpha_array
 
 	def combine_wDot_data(self):
-		wDots = []
+		wDots = np.array([])
 
 		for alpha in self.alpha_array:
-			wDots.append(alpha.wDot_data_all_clones)
+			wDots = np.append(wDots, alpha.wDot_data_all_clones)
 
-		wDots_array = np.array(wDots).flatten()
-
-		return wDots_array
+		return wDots.flatten()
 
 	def calculate_prob_dist(self):
 		denominator = 0
 
 		for alpha in self.alpha_array:
-			denominator += alpha.num_samples * alpha.norm_factor * np.sum(alpha.bias_factor_array)
+			denominator += alpha.num_samples * \
+						   alpha.norm_factor * \
+						   np.sum(alpha.bias_factor_array)
 
 		return self.wDot_hist/denominator
 
 	def calculate_norm_factors(self):
 		for alpha in self.alpha_array:
-			alpha.norm_factor = 1 / (np.sum(alpha.bias_factor_array)*np.sum(self.prob_dist))
+			alpha.norm_factor = 1 / \
+				(np.sum(np.sum(alpha.bias_factor_array)*self.prob_dist))
 
 
 	def monitor_convergence(self):
 		pass
 
+	def normalize_p_dist(self):
+		bin_width = myHistogram.wDot_hist_bin_centers[1] - \
+					myHistogram.wDot_hist_bin_centers[0]
+
+		integral = np.sum(np.array([i*bin_width for i in self.prob_dist]))
+
+		self.prob_dist /= integral
+
 	def iterate_WHAM(self):
-		for i in range(0,10):
+		print([(alpha.bias_param, alpha.norm_factor) for alpha in self.alpha_array])
+		for i in range(0,2):
 			self.prob_dist = self.calculate_prob_dist()
 			self.calculate_norm_factors()
+			print([(alpha.bias_param, alpha.norm_factor) for alpha in self.alpha_array])
+
+		self.normalize_p_dist()
 
 		#plt.plot(self.wDot_hist_bin_edges[:-1], self.prob_dist)
 		#plt.show()
@@ -193,6 +209,14 @@ myHistogram.iterate_WHAM()
 with open ("300_P_avg_std.dat", "r") as file:
 	wDots_p_dist_unbiased = np.array([[float(x) for x in line.split()] for line in file])
 
-plt.plot(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist)
-plt.plot(wDots_p_dist_unbiased[:,0], wDots_p_dist_unbiased[:,1])
+bw=wDots_p_dist_unbiased[1,0]-wDots_p_dist_unbiased[0,0]
+
+integral=np.sum(np.array([i*bw for i in wDots_p_dist_unbiased[:,1]]))
+
+print(integral)
+
+
+plt.plot(myHistogram.wDot_hist_bin_centers, myHistogram.prob_dist, label="WHAM")
+plt.plot(wDots_p_dist_unbiased[:,0], wDots_p_dist_unbiased[:,1], label="unbiased, k=3")
+plt.legend()
 plt.show()
