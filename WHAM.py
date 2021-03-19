@@ -180,9 +180,15 @@ class Histogram():
 			self.prob_dist = self.calculate_prob_dist()
 			self.calculate_norm_factors()
 
-		plt.plot(self.wDot_hist_bin_edges[:-1], self.prob_dist)
-		plt.show()
+		#plt.plot(self.wDot_hist_bin_edges[:-1], self.prob_dist)
+		#plt.show()
 
 myHistogram = Histogram()
 
 myHistogram.iterate_WHAM()
+
+
+
+plt.plot(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist)
+
+plt.show()
