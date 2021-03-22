@@ -10,7 +10,17 @@ class Clone:
 
 		self.wDots_array = self.get_wDots()
 
+		self.tau = self.wDots_array[-1,0]
+
+		self.wDot_avg = np.mean(self.wDots_array[:,1])
+
 		self.wDotIntegral = self.get_wDotIntegral()
+
+		# wdi = 0 #np.trapz(self.wDots_array[:,1], self.wDots_array[:,0])
+		# for idx in range( 1, self.wDots_array.shape[0]):
+		# 	wdi += (self.wDots_array[idx,1]) * (self.wDots_array[idx,0] - self.wDots_array[idx-1,0])
+		#
+		# print(self.wDotIntegral, wdi, self.wDot_avg*self.tau)
 
 		# inverse k_B*T
 		self.beta = 1
@@ -21,23 +31,35 @@ class Clone:
 
 		curr_dir = os.getcwd()
 
-		num_frames = len(open("wDots.txt").readlines()) - 1
+		if os.path.exists('wDots.txt'):
+			num_frames = len(open("wDots.txt").readlines()) - 1
 
 		return num_frames
 
 	def get_wDots(self):
-		with open ('wDots.txt', 'r') as file:
-			# https://stackoverflow.com/a/6583635
-			wDots_array = [[float(x) for x in line.split()] for line in file]
+		wDots_array = []
+		if os.path.exists('wDots.txt'):
+			with open ('wDots.txt', 'r') as file:
+				# https://stackoverflow.com/a/6583635
+				wDots_array = [[float(x) for x in line.split()] for line in file]
 
 		return np.array(wDots_array)
 
 	def get_wDotIntegral(self):
-		with open('wDotIntegral.txt', 'r') as file:
-			# https://stackoverflow.com/a/6583635
-			wDotIntegral = [float(x) for x in next(file).split()]
+		if os.path.exists('wDotIntegral.txt'):
+			with open('wDotIntegral.txt', 'r') as file:
+				# https://stackoverflow.com/a/6583635
+				wDotIntegral = [float(x) for x in next(file).split()]
+				return wDotIntegral[0]
+		else:
+			wDotIntegral = 0 #np.trapz(self.wDots_array[:,1], self.wDots_array[:,0])
+			for idx in range( 1, self.wDots_array.shape[0]):
+				wDotIntegral += self.wDots_array[idx,1] * \
+								(self.wDots_array[idx,0] - self.wDots_array[idx-1,0])
 
-		return wDotIntegral[0]
+			return wDotIntegral
+
+
 
 class Alpha:
 	# For a single value of alpha
@@ -110,7 +132,7 @@ class Alpha:
 		num_samples = 0
 
 		for clone in self.clone_array:
-			num_samples += clone.num_frames
+			num_samples += 1 #clone.num_frames
 
 		return num_samples
 
@@ -118,7 +140,7 @@ class Alpha:
 		wDots = []
 
 		for clone in self.clone_array:
-			wDots.append(clone.wDots_array[1:,1])
+			wDots.append(clone.wDot_avg)
 
 		wDots_array = np.array(wDots).flatten()
 
@@ -191,10 +213,10 @@ class Histogram():
 
 	def iterate_WHAM(self):
 		print([(alpha.bias_param, alpha.norm_factor) for alpha in self.alpha_array])
-		for i in range(0,2):
+		for i in range(0,10):
 			self.prob_dist = self.calculate_prob_dist()
 			self.calculate_norm_factors()
-			print([(alpha.bias_param, alpha.norm_factor) for alpha in self.alpha_array])
+			# print([(alpha.bias_param, alpha.norm_factor) for alpha in self.alpha_array])
 
 		self.normalize_p_dist()
 
@@ -205,10 +227,19 @@ myHistogram = Histogram()
 
 myHistogram.iterate_WHAM()
 
-with open ("300_P_avg_std.dat", "r") as file:
-	wDots_p_dist_unbiased = np.array([[float(x) for x in line.split()] for line in file])
+with open ("300_avg.txt", "r") as file:
+	wDots_unbiased = np.array([[float(x) for x in line.split()] for line in file])
 
-plt.plot(myHistogram.wDot_hist_bin_centers, myHistogram.prob_dist, label="WHAM")
-plt.plot(wDots_p_dist_unbiased[:,0], wDots_p_dist_unbiased[:,1], label="unbiased, k=3")
+unbiased_hist , unbiased_bins = np.histogram(wDots_unbiased, bins="auto")
+
+bw = unbiased_bins[1] - unbiased_bins[0]
+
+integral = np.sum(np.array([i*bw for i in unbiased_hist]))
+
+plt.title("Probability distribution of average $\dot{w}$ values over period tau=30s \nfor biased and unbiased simulations")
+plt.plot(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist, label="WHAM")
+plt.ylabel(r"$\mathcal{P}( \langle \dot{w} \rangle_\tau )$")
+plt.xlabel(r"$\langle\dot{w}\rangle$")
+plt.plot(unbiased_bins[:-1], unbiased_hist/integral, label="unbiased, k=3")
 plt.legend()
 plt.show()
