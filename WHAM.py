@@ -59,8 +59,6 @@ class Clone:
 
 			return wDotIntegral
 
-
-
 class Alpha:
 	# For a single value of alpha
 	def __init__(self):
@@ -76,6 +74,10 @@ class Alpha:
 		# c_a
 		self.bias_factor_array = self.calculate_bias_factors()
 
+		self.bias_factor_sum = np.sum(self.bias_factor_array)
+
+
+
 		# N_a
 		self.num_samples = self.get_num_samples()
 
@@ -84,6 +86,7 @@ class Alpha:
 
 		#f_a
 		self.norm_factor = 1
+
 
 	def get_bias_param(self):
 		with open('alpha.txt', 'r') as file:
@@ -116,6 +119,8 @@ class Alpha:
 					os.chdir(entry)
 					CloneInstance = Clone()
 					clone_array.append(CloneInstance)
+
+		os.chdir(root_dir)
 
 		return clone_array
 
@@ -171,6 +176,7 @@ class Histogram():
 					os.chdir(entry)
 					AlphaInstance = Alpha()
 					alpha_array.append(AlphaInstance)
+					np.savetxt("Sm.txt", np.array([AlphaInstance.bias_factor_sum]), delimiter="\t", fmt='%.16f')
 
 		os.chdir(root_dir)
 
@@ -235,6 +241,15 @@ unbiased_hist , unbiased_bins = np.histogram(wDots_unbiased, bins="auto")
 bw = unbiased_bins[1] - unbiased_bins[0]
 
 integral = np.sum(np.array([i*bw for i in unbiased_hist]))
+
+np.savetxt("unbiased_bins.txt", unbiased_bins[:-1], delimiter="\t", fmt='%.8f')
+np.savetxt("unbiased_pdist.txt", unbiased_hist/integral, delimiter="\t", fmt='%.8f')
+
+
+# WHAM_data_array=np.concatenate(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist)
+
+np.savetxt("bins.txt", myHistogram.wDot_hist_bin_edges[:-1], delimiter="\t", fmt='%.8f')
+np.savetxt("pdist.txt", myHistogram.prob_dist, delimiter="\t", fmt='%.8f')
 
 plt.title("Probability distribution of average $\dot{w}$ values over period tau=30s \nfor biased and unbiased simulations")
 plt.plot(myHistogram.wDot_hist_bin_edges[:-1], myHistogram.prob_dist, label="WHAM")
