@@ -82,15 +82,17 @@ class CloningData:
 
 	def calculate_prob_dist(self):
 
-		denominator = 0
+		denominator = np.zeros(self.wDot_avg_bin_centers.shape)
+
+		print(denominator.shape)
 
 		for alpha in self.wDot_avg_dict:
 
 			# array over range of wDot
 			# The bias factor dictionary entry is an array, the rest are scalar values
-			denominator += self.num_samples_dict[alpha] * \
-						   self.norm_factor_dict[alpha] * \
-						   self.bias_factor_dict[alpha]
+			denominator = np.add(denominator,
+								 self.num_samples_dict[alpha] * self.norm_factor_dict[alpha] * self.bias_factor_dict[alpha]
+								)
 
 		p_dist = self.wDot_avg_hist / denominator
 
@@ -100,7 +102,7 @@ class CloningData:
 	def calculate_norm_factors(self):
 
 		for alpha in self.norm_factor_dict:
-			self.norm_factor_dict[alpha] = 1 / (np.sum(self.prob_dist * self.bias_factor_dict[alpha]))
+			self.norm_factor_dict[alpha] = 1 / (np.sum(np.multiply(self.prob_dist, self.bias_factor_dict[alpha])))
 
 	def normalize_p_dist(self):
 		bin_width = self.wDot_avg_bin_centers[1] - \
