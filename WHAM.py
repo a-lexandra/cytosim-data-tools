@@ -183,7 +183,6 @@ myCloningData.iterate_WHAM(100)
 
 # Combine prob distribution into a single 2d np.array to write to file
 WHAM_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers, myCloningData.prob_dist))
-print(WHAM_data_array)
 
 # Generate output file name
 output_file_name = "prob_dist_tau" + str(int(myCloningData.tau)) + ".dat"
