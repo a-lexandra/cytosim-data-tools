@@ -24,23 +24,25 @@ class CloningData:
 	# Multiple values of alpha
 	def __init__(self):
 		# Get command line arguments when running the script
-		args = self.init_parser()
+		# args = self.init_parser()
 
 		# Cloning iteration length
-		self.tau = args.tau
+		# self.tau = 1 #args.tau
 		# Inverse temperature
-		self.beta = args.beta
+		# self.beta = args.beta
 
 		# Dictionary: {alpha: np.array([iteration #, avg wDot for clone])}
+		# Read from file
 		self.wDot_avg_dict = self.get_wDot_data()
 
-		# histogram values and bin centers of all of the wDot values read from file by self.get_wDot_data()
+		# Histogram values and bin centers of all of the wDot values read from file by self.get_wDot_data()
 		self.wDot_avg_hist, self.wDot_avg_bin_centers = self.calculate_wDot_hist()
 
 		# Dictionary: {alpha: num_samples}
 		self.num_samples_dict = self.calculate_num_samples()
 
 		# Dictionary: {alpha: norm_factor}
+		# Initialize all values to 1, and the interatively recalculate
 		self.norm_factor_dict = dict.fromkeys(self.wDot_avg_dict.keys(),1)
 
 		# Dictionary: {alpha: np.array([bias factor over wDot range defined by self.wDot_avg_bin_centers])}
@@ -51,7 +53,7 @@ class CloningData:
 		# Inverse temperature
 		parser.add_argument('--beta', type=float, default=1.0)
 		# Cloning interation length
-		parser.add_argument('--tau', type=float, required=True)
+		parser.add_argument('--tau', type=float, required=False)
 
 		return parser.parse_args()
 
@@ -72,7 +74,6 @@ class CloningData:
 						# Load data from file into np array
 						# https://stackoverflow.com/a/6583635
 						wDots_avg_array = np.array([[float(x) for x in line.split()] for line in file])
-						# print(wDots_avg_array)
 
 					# Save np.array with wDot data to dictionary
 					data[alpha] = wDots_avg_array
@@ -120,7 +121,7 @@ class CloningData:
 		for alpha in bias_factor_dict:
 			# Calculate the bias factor array for each alpha
 			# self.wDot_avg_bin_centers is a np.array, making bias_factor_dict[alpha] values np.array as well
-			bias_factor_dict[alpha] = np.exp(-self.beta * alpha * self.tau * self.wDot_avg_bin_centers)
+			bias_factor_dict[alpha] = np.exp(-self.beta * alpha * self.wDot_avg_bin_centers)
 
 		return bias_factor_dict
 
@@ -168,8 +169,9 @@ class CloningData:
 		# Iteratively solve for norm factors
 		for i in range (0,n_iters):
 			self.prob_dist = self.calculate_prob_dist()
-			self.calculate_norm_factors()
 			self.normalize_p_dist()
+			self.calculate_norm_factors()
+
 
 	def monitor_convergence(self):
 		# TODO: write a function that monitors the convergence of norm factors
@@ -185,7 +187,7 @@ myCloningData.iterate_WHAM(100)
 WHAM_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers, myCloningData.prob_dist))
 
 # Generate output file name
-output_file_name = "prob_dist_tau" + str(int(myCloningData.tau)) + ".dat"
+output_file_name = "prob_dist.dat"
 
 # Save data to file
 np.savetxt(output_file_name, WHAM_data_array, delimiter="\t", fmt='%.8f')
