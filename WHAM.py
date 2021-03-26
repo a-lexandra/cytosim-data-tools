@@ -121,7 +121,7 @@ class CloningData:
 		for alpha in bias_factor_dict:
 			# Calculate the bias factor array for each alpha
 			# self.wDot_avg_bin_centers is a np.array, making bias_factor_dict[alpha] values np.array as well
-			bias_factor_dict[alpha] = np.exp(-self.beta * alpha * self.wDot_avg_bin_centers)
+			bias_factor_dict[alpha] = np.exp(alpha * self.wDot_avg_bin_centers)
 
 		return bias_factor_dict
 
