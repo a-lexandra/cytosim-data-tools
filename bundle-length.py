@@ -132,12 +132,45 @@ def process_file(input_file_name, output_file_name):
 		#
 		# calculate curve along long axis of bundle and find its length
 
+		# sum of distances for each filament in cluster that satisfies the min distance cutoff
+		# normalized by number of pair distance each filament has
+		# inverse of sum will be used as a weight factor when calculating splines
+		# in short, filaments that are on average closer to their nehbors will be weighted more
+		N_pairs = distance_matrix_dataframe[idx].shape[0] * (distance_matrix_dataframe[idx].shape[0] - 1)
+		dist_sum = (distance_matrix_dataframe[idx].sum(axis=0)/N_pairs)
+		inv_dist_sum_norm = (dist_sum-dist_sum.min())/(dist_sum.max()-dist_sum.min())
+
+
+		spline_weights = inv_dist_sum_norm.values #np.sqrt(distance_matrix_dataframe[idx]**2).sum(axis=0)/N_pairs
+		# print()
+
+
 		pos_array = df_cluster.iloc[idx][['posX','posY']].values
 		# pos_array = pos_array[pos_array[:,0].argsort()]
 
 		if (pos_array.shape[0] > 5):
+			# rotate pos_array to minimize variance in x values
+			theta_arr = np.linspace(0, np.pi, 100, endpoint=True)
+
+			new_pos_array = pos_array
+
+			for theta in theta_arr:
+				c, s = np.cos(theta), np.sin(theta)
+				R = np.array(((c, -s), (s, c)))
+
+				tmp_pos_array = np.zeros(pos_array.shape)
+
+				for pos_idx in range(0, pos_array.shape[0]):
+					tmp_pos_array[pos_idx] = R.dot(pos_array[pos_idx])
+
+				if (np.var(tmp_pos_array[:,0]) < np.var(new_pos_array[:,0])):
+					new_pos_array=tmp_pos_array
+
+
 			# https://stackoverflow.com/a/52020098
-			pos_array = pos_array[pos_array[:,1].argsort()]
+			pos_array = new_pos_array[pos_array[:,1].argsort()]
+
+			# print(pos_array)
 
 			x = pos_array[:,0]
 			y = pos_array[:,1]
@@ -146,26 +179,52 @@ def process_file(input_file_name, output_file_name):
 			distance = np.cumsum( np.sqrt(np.sum( np.diff(pos_array, axis=0)**2, axis=1 )) )
 			distance = np.insert(distance, 0, 0)/distance[-1]
 
+			spline_weights = np.zeros(pos_array.shape[0])
+
+			for pos_idx in range(0, pos_array.shape[0]):
+				shift = np.abs(pos_array[pos_idx,0] - np.mean(pos_array[:,0]))
+				diff = shift - np.std(pos_array[:,0])
+				if diff < 0 :
+					spline_weights[pos_idx] =  np.abs(diff)
+
+			# spline_weights = (spline_weights - spline_weights.min())/(spline_weights.max() - spline_weights.min())
+
+			spline_weights = None
+			# print(spline_weights)
+
+			s_val = None
 
 			# Build a list of the spline function, one for each dimension:
-			splines = [UnivariateSpline(distance, coords, k=5) for coords in pos_array.T]
+			splines1 = [UnivariateSpline(distance, coords, k=1, w=spline_weights, s=s_val) for coords in pos_array.T]
+			splines2 = [UnivariateSpline(distance, coords, k=2, w=spline_weights, s=s_val) for coords in pos_array.T]
+			splines3 = [UnivariateSpline(distance, coords, k=3, w=spline_weights, s=s_val) for coords in pos_array.T]
+			splines4 = [UnivariateSpline(distance, coords, k=4, w=spline_weights, s=s_val) for coords in pos_array.T]
+			splines5 = [UnivariateSpline(distance, coords, k=5, w=spline_weights, s=s_val) for coords in pos_array.T]
+
+			print([spl.get_residual() for spl in splines2])
+			print([spl.get_residual() for spl in splines3])
+			print([spl.get_residual() for spl in splines4])
+			print([spl.get_residual() for spl in splines5])
 
 			# Computed the spline for the asked distances:
-			alpha = np.linspace(0,1, 20)
-			points_fitted = np.vstack(( spl(alpha) for spl in splines) ).T
+			alpha = np.linspace(0,1, 100)
+			points_fitted2 = np.vstack([ spl(alpha) for spl in splines2 ] ).T
+			points_fitted3 = np.vstack([ spl(alpha) for spl in splines3 ] ).T
+			points_fitted4 = np.vstack([ spl(alpha) for spl in splines4 ] ).T
+			points_fitted5 = np.vstack([ spl(alpha) for spl in splines5 ] ).T
 
 			# Graph:
-			plt.plot(*pos_array.T, 'ok', label='original points');
-			plt.plot(*points_fitted.T, '-r', label='fitted spline k=5, s=None');
-			plt.axis('equal'); plt.legend(); plt.xlabel('x'); plt.ylabel('y');
-			plt.show()
+			# plt.plot(*pos_array.T, 'ok', label='original points');
+			# plt.plot(*points_fitted1.T, '-', label='fitted spline k=1, s=None');
 
-			arc_length = np.sum(np.sqrt(np.sum( np.diff(points_fitted, axis=0)**2, axis=1 )))
+			# plt.plot(*points_fitted2.T, '-', lw=2, label='fitted spline k=2, s=None');
+			# plt.plot(*points_fitted3.T, '-', lw=2, label='fitted spline k=3, s=None');
+			# plt.plot(*points_fitted4.T, '-', lw=2, label='fitted spline k=4, s=None');
+			# plt.plot(*points_fitted5.T, '-', lw=2, label='fitted spline k=5, s=None');
+			# plt.axis('equal'); plt.legend(); plt.xlabel('x'); plt.ylabel('y');
+			# plt.show()
 
-
-
-
-
+			arc_length = np.sum(np.sqrt(np.sum( np.diff(points_fitted5, axis=0)**2, axis=1 )))
 
 			# add values to data frame which will be written to the output file
 			output_df = output_df.append({'cluster_size' : int(cluster_size), \
@@ -175,7 +234,7 @@ def process_file(input_file_name, output_file_name):
 
 
 
-	output_df.to_csv(output_file_path.with_suffix('.len.dat'), header=False, index=None, sep="\t")
+	output_df.to_csv(output_file_path.with_suffix('.len.dat'), header=True, index=None, sep="\t")
 
 	### OLD CODE BELOW ###
 
