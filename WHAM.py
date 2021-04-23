@@ -174,7 +174,7 @@ class CloningData:
 								 # ^ np.array
 								 self.num_samples_dict[alpha] * \
 								 # ^ int
-								 	self.norm_factor_dict[alpha] * \
+									self.norm_factor_dict[alpha] * \
 									# ^ float
 									self.bias_factor_dict[alpha] \
 									# ^ np.array
@@ -220,7 +220,10 @@ class CloningData:
 
 		rate_func = -np.log(p_dist)/self.tau
 
-		rate_func = rate_func - min(np.isfinite(rate_func))
+		min_val = float(np.nanmin(rate_func, axis=0))
+
+
+		rate_func -=  min_val
 
 		self.rate_func = rate_func
 
@@ -235,9 +238,9 @@ myCloningData = CloningData()
 myCloningData.iterate_WHAM(1000)
 
 # Combine prob distribution into a single 2d np.array to write to file
-WHAM_p_dist_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers[:-1], myCloningData.prob_dist[:-1]))
+WHAM_p_dist_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers, myCloningData.prob_dist))
 
-WHAM_rate_func_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers[:-1], myCloningData.rate_func[:-1]))
+WHAM_rate_func_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers, myCloningData.rate_func))
 
 # Generate output file name
 p_dist_output_file_name = "prob_dist.dat"
