@@ -67,7 +67,8 @@ class CloningData:
 				# If file ends in .txt
 				if entry.is_file() and ".txt" in entry.name:
 					# Alpha is the first value before '-'
-					alpha = float(entry.name.split('-')[0])
+					alpha = float(entry.name.split('-')[0].replace('n','-'))
+
 
 					# Open file
 					with open (entry, 'r') as file:
@@ -94,7 +95,17 @@ class CloningData:
 		# Calculate the histogram from all wDot avg values for all alphas
 		# bins='auto' calculate the number of bins using Friedman-Diaconis or Sturges rule,
 		# whichever returns the larger number of bins
-		wDot_avg_hist, wDot_avg_bin_edges = np.histogram(np.array(wDot_combined).flatten(), bins='auto')
+
+		# Automatically calculate the number of bins using Friedman-Diacons or Sturgis rule,
+		# whichever returns the larger number of bins
+		#wDot_avg_hist, wDot_avg_bin_edges = np.histogram(np.array(wDot_combined).flatten(), bins='auto')
+
+		# Custom bin size
+		bin_width=0.1
+		data = np.array(wDot_combined).flatten()
+		wDot_avg_hist, wDot_avg_bin_edges = \
+			np.histogram(data, bins=np.arange(min(data), max(data) + bin_width, bin_width))
+
 		# Calculate the center of each bin (to use in plotting)
 		wDot_avg_bin_centers = wDot_avg_bin_edges[:-1] + np.diff(wDot_avg_bin_edges)/2
 
@@ -181,7 +192,7 @@ class CloningData:
 # Generate instance of CloningData class
 myCloningData = CloningData()
 
-myCloningData.iterate_WHAM(100)
+myCloningData.iterate_WHAM(1000)
 
 # Combine prob distribution into a single 2d np.array to write to file
 WHAM_data_array = np.column_stack((myCloningData.wDot_avg_bin_centers, myCloningData.prob_dist))
