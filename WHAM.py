@@ -85,6 +85,7 @@ class CloningData:
 		# Initialize empty list with all avg wDot values for all alphas
 		wDot_combined = []
 
+
 		# Iterate over keys (alphas) and values (wDot averages)
 		for alpha, wDot_avg_raw_data in self.wDot_avg_dict.items():
 			# Only need wDot avg values, [:,0] are the iteration numbers (not used)
@@ -103,13 +104,23 @@ class CloningData:
 		# Custom bin size
 		bin_width=0.1
 		data = np.array(wDot_combined).flatten()
-		wDot_avg_hist, wDot_avg_bin_edges = \
-			np.histogram(data, bins=np.arange(min(data), max(data) + bin_width, bin_width))
+		combined_hist, combined_bin_edges = \
+			np.histogram(wDot_data, bins=np.arange(min(data), max(data) + bin_width, bin_width))
+
+		combined_hist[:] = 0
+
+		combined_bin_centers = combined_bin_edges[:-1] + np.diff(combined_bin_edges)/2
+
+		for alpha, wDot_avg_raw_data in self.wDot_avg_dict.items():
+			tmp_data = wDot_avg_raw_data[:,1]
+			combined_hist, += \
+				np.histogram(tmp_data, bins=np.arange(min(data), max(data) + bin_width, bin_width)) \
+				+ alpha * combined_bin_centers
 
 		# Calculate the center of each bin (to use in plotting)
-		wDot_avg_bin_centers = wDot_avg_bin_edges[:-1] + np.diff(wDot_avg_bin_edges)/2
 
-		return (wDot_avg_hist, wDot_avg_bin_centers)
+
+		return (combined_hist, combined_bin_centers)
 
 	def calculate_num_samples(self):
 		# Create empty dictionary for number of samples with same keys (alphas)
@@ -158,6 +169,8 @@ class CloningData:
 		p_dist = self.wDot_avg_hist / denominator
 
 		return p_dist
+
+
 
 	def calculate_norm_factors(self):
 		# Iterate over keys (alphas)
