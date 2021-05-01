@@ -43,23 +43,6 @@ class CloningData:
 		self.period = None
 		self.neighbors = None
 
-		# Dictionary: {alpha: np.array([iteration #, avg wDot for clone])}
-		# Read from file
-		self.wDot_avg_dict = self.get_wDot_data()
-
-		# Histogram values and bin centers of all of the wDot values read from file by self.get_wDot_data()
-		self.wDot_avg_hist, self.wDot_avg_bin_centers = self.calculate_wDot_hist()
-
-		# Dictionary: {alpha: num_samples}
-		self.num_samples_dict = self.calculate_num_samples()
-
-		# Dictionary: {alpha: norm_factor}
-		# Initialize all values to 1, and the interatively recalculate
-		self.norm_factor_dict = dict.fromkeys(self.wDot_avg_dict.keys(),1)
-
-		# Dictionary: {alpha: np.array([bias factor over wDot range defined by self.wDot_avg_bin_centers])}
-		self.bias_factor_dict = self.calculate_bias_factors()
-
 	def init_parser(self):
 		parser = argparse.ArgumentParser(description='Process data files with avg wDot values over iterations')
 		# Inverse temperature
@@ -69,7 +52,7 @@ class CloningData:
 		# Bin size for histogram
 		parser.add_argument('--binsize', type=float, default=0.1)
 		# Name of metafile with input data locations
-		parser.add_argument('--metafile', type=string, required=True)
+		parser.add_argument('--metafile', type=str, required=True)
 		# Dimension of CV space
 		parser.add_argument('--dim', type=int, default=1)
 		# Number of bins
@@ -90,7 +73,7 @@ class CloningData:
 		zerr, zcontribs, ztaus = avar.calc_partition_functions(psis, z, F, iat_method='acor')
 
 		# Calculate the PMF from EMUS
-		domain = ((0.1, 3))           # Range of dihedral angle values
+		domain = ((-0.5, 6))           # Range of dihedral angle values
 		pmf, edges = emus.calculate_pmf(cv_trajs, psis, domain, z, nbins=self.num_bins, kT=self.kT, use_iter=False)   # Calculate the pmf
 
 		# Calculate z using the MBAR iteration.
@@ -100,9 +83,9 @@ class CloningData:
 		z_iter_1k, F_iter_1k = emus.calculate_zs(psis, n_iter=1000)
 
 		# Calculate new PMF
-		iterpmf, edges = emus.calculate_pmf(cv_trajs, psis, domain, nbins=nbins, z=z_iter_1k, kT=kT)
+		iterpmf, edges = emus.calculate_pmf(cv_trajs, psis, domain, nbins=self.num_bins, z=z_iter_1k, kT=self.kT)
 		# Get the asymptotic error of each histogram bin.
-		pmf_av_mns, pmf_avars = avar.calc_pmf(cv_trajs, psis, domain, z, F, nbins=nbins, kT=kT, iat_method=np.average(ztaus, axis=0))
+		pmf_av_mns, pmf_avars = avar.calc_pmf(cv_trajs, psis, domain, z, F, nbins=self.num_bins, kT=self.kT, iat_method=np.average(ztaus, axis=0))
 
 		### Data Output Section ###
 
