@@ -126,9 +126,9 @@ class CloningData:
 				np.histogram(tmp_data, bins=bin_arr) #\
 				# + alpha * combined_bin_centers[:]
 
-			unbias_factor_arr = np.array([np.exp(-alpha*x*self.tau) for x in combined_bin_centers ])
+			#unbias_factor_arr = np.array([np.exp(-alpha*x*self.tau) for x in combined_bin_centers ])
 
-			tmp_hist = tmp_hist*unbias_factor_arr
+			#tmp_hist = tmp_hist*unbias_factor_arr
 
 			combined_hist += tmp_hist
 
@@ -158,7 +158,7 @@ class CloningData:
 		for alpha in bias_factor_dict:
 			# Calculate the bias factor array for each alpha
 			# self.wDot_avg_bin_centers is a np.array, making bias_factor_dict[alpha] values np.array as well
-			bias_factor_dict[alpha] = np.exp(alpha * self.wDot_avg_bin_centers)
+			bias_factor_dict[alpha] = np.exp(alpha * self.wDot_avg_bin_centers * self.tau)
 
 		return bias_factor_dict
 
@@ -218,7 +218,7 @@ class CloningData:
 
 		p_dist = np.array([ np.nan if x < 1e-8 else x for x in self.prob_dist])
 
-		rate_func = -np.log(p_dist)/self.tau
+		rate_func = -np.log(p_dist) /self.tau
 
 		min_val = float(np.nanmin(rate_func, axis=0))
 
