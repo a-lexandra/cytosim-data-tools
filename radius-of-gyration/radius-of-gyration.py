@@ -98,93 +98,51 @@ def process_file(input_file_name, output_file_name):
 
 	# split data frames into separate clusters
 
-	output_df = pd.DataFrame(columns=['cluster_size', 'end_end_length'])
+	output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
 
 
 	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
-		# find end-to-end distance of bundle
-		# (longest distance between points within cluster)
+		# For each cluster, calculate the center of mass
 
-		# Distance matrix
-		# https://stackoverflow.com/a/39205919
-		# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
-		distance_matrix_dataframe = \
-			pd.DataFrame(squareform(pdist(df_cluster.iloc[:, lambda df_cluster: [3,4]])), \
-									columns=None,\
-									index=None )
+		pos_array = df_cluster[['posX','posY']].values
 
-		# replace zero values with NaN
-		df = distance_matrix_dataframe[distance_matrix_dataframe.gt(0)]
+		mass = 0
 
-		# check that the minimum pair distance is less than 0.25 for a given filament
-		df2 = df.min(axis=0)
-		idx = df2[df2.lt(0.25)].index
+		COM_coords = np.zeros(pos_array[0].shape)
 
-		# get the max distances from the filaments which are within the cutoff
-		# enforced above
-		df3 = df.iloc[idx]
-		max_pair_dist = df3.max().max()
+		for value in pos_array:
+			mass += 1
+			COM_coords += value
+			# plt.scatter(value[0], value[1])
+
+		COM_coords /= mass
+
+		# plt.scatter(COM_coords[0], COM_coords[1], marker="*")
+		#
+		# plt.show()
+
+		num_pts = 0
+
+		radius_gyr_sq = 0
+
+		for value in pos_array:
+			num_pts += 1
+			radius_gyr_sq += (np.linalg.norm(value - COM_coords))**2
+
+		radius_gyr_sq /= num_pts
+
+		radius_gyr = np.sqrt(radius_gyr_sq)
 
 		cluster_size = df_cluster.shape[0]
 
-
-		# TODO: find arclength of bundle
-		#
-		# calculate curve along long axis of bundle and find its length
-
-		# sum of distances for each filament in cluster that satisfies the min distance cutoff
-		# normalized by number of pair distance each filament has
-		# inverse of sum will be used as a weight factor when calculating splines
-		# in short, filaments that are on average closer to their nehbors will be weighted more
-		N_pairs = distance_matrix_dataframe[idx].shape[0] * (distance_matrix_dataframe[idx].shape[0] - 1)
-		dist_sum = (distance_matrix_dataframe[idx].sum(axis=0)/N_pairs)
-		inv_dist_sum_norm = (dist_sum-dist_sum.min())/(dist_sum.max()-dist_sum.min())
-
-
-		spline_weights = inv_dist_sum_norm.values #np.sqrt(distance_matrix_dataframe[idx]**2).sum(axis=0)/N_pairs
-		# print()
-
-
-		pos_array = df_cluster.iloc[idx][['posX','posY']].values
-		# pos_array = pos_array[pos_array[:,0].argsort()]
-
-		if (pos_array.shape[0] > 5):
-			# rotate pos_array to minimize variance in x values
-			theta_arr = np.linspace(0, np.pi, 100, endpoint=True)
-
-			new_pos_array = pos_array
-
-			for theta in theta_arr:
-				c, s = np.cos(theta), np.sin(theta)
-				R = np.array(((c, -s), (s, c)))
-
-				tmp_pos_array = np.zeros(pos_array.shape)
-
-				for pos_idx in range(0, pos_array.shape[0]):
-					tmp_pos_array[pos_idx] = R.dot(pos_array[pos_idx])
-
-				if (np.var(tmp_pos_array[:,0]) < np.var(new_pos_array[:,0])):
-					new_pos_array=tmp_pos_array
-
-
-			# https://stackoverflow.com/a/52020098
-			pos_array = new_pos_array[pos_array[:,1].argsort()]
-
-			# print(pos_array)
-
-			x = pos_array[:,0]
-			y = pos_array[:,1]
-
-
-			# add values to data frame which will be written to the output file
-			# output_df = output_df.append({'cluster_size' : int(cluster_size), \
-			# 							  'end_end_length' : max_pair_dist, \
-			# 							  'arc_length' : arc_length },\
-			# 							 ignore_index=True)
+		# add values to data frame which will be written to the output file
+		output_df = output_df.append({'cluster_size' : int(cluster_size), \
+									  'radius_of_gyration' : radius_gyr},\
+									 ignore_index=True)
 
 
 
-	output_df.to_csv(output_file_path.with_suffix('.len.dat'), header=True, index=None, sep="\t")
+	output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=True, index=None, sep="\t")
 
 	### OLD CODE BELOW ###
 
