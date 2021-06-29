@@ -11,8 +11,6 @@ import pandas as pd # for processing data file
 
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
-
-
 # for calculating the distance matrix
 from scipy.spatial.distance import squareform, pdist
 
@@ -69,7 +67,7 @@ def process_file(input_file_name, output_file_name):
 	### Pre-process input data in temp file ###
 
 	# Remove blank lines and lines with % (Cytosim comments)
-	# BUT Keep line with column headers
+	# BUT Keep line with column headers (includes posX string)
 	# https://stackoverflow.com/a/11969474 , https://stackoverflow.com/a/2369538
 	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
 		for line in input_file:
