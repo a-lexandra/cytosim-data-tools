@@ -74,16 +74,16 @@ def process_file(input_file_name, output_file_name):
 	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
 		for line in input_file:
 			if not (line.isspace() or ("%" in line and (not "posX" in line))):
-				temp_file.write(line)
+				temp_file.write(line.replace("%    ",""))
 
 	# Delete columns with extraneous data
 	# Read the copy fixed width file that is output by Cytosim
-	temp_dataframe = pd.read_fwf(temp_file_name)
-
+	#temp_dataframe = pd.read_fwf(temp_file_name)
+	temp_dataframe = pd.read_csv(temp_file_name, delim_whitespace=True)
 
 	#%  cluster nb_fibers  fiber_id      posX      posY      dirX      dirY
 	# Drop columns with unnecessary data
-	temp_dataframe = temp_dataframe.drop(["%"], axis=1)
+	#temp_dataframe = temp_dataframe.drop(["%"], axis=1)
 
 	#temp_dataframe = temp_dataframe.rename(columns={"identity":"filID"})
 
@@ -142,7 +142,7 @@ def process_file(input_file_name, output_file_name):
 
 
 
-	output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=True, index=None, sep="\t")
+	output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
 
 	### OLD CODE BELOW ###
 
