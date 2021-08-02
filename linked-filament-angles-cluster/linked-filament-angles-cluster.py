@@ -72,7 +72,7 @@ def process_file(input_file_name, output_file_name):
 	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
 		for line in input_file:
 			if not (line.isspace() or ("%" in line and (not "class" in line))):
-				temp_file.write(line.replace("%    ",""))
+				temp_file.write(line.replace("%",""))
 
 	# Delete columns with extraneous data
 	# Read the copy fixed width file that is output by Cytosim
@@ -100,34 +100,43 @@ def process_file(input_file_name, output_file_name):
 	# print(temp_dataframe.cluster)
 
 	output_df = pd.DataFrame(columns=['filament_pair_angle', 'cluster_id'])
-	output_df_largest_cluster = pd.DataFrame(columns=['filament_pair_angle', 'cluster_id'])
+	output_df_largest_cluster = pd.DataFrame(columns=['filament_pair_angle'])
+	output_df_sin = pd.DataFrame(columns=['filament_pair_sin_theta', 'cluster_id'])
+	output_df_sin_largest_cluster = pd.DataFrame(columns=['filament_pair_sin_theta'])
 
 	first_cluster=True
 
 	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
 		# For each cluster, calculate the center of mass
 
-		cos_theta_array = df_cluster['cos_angle'].values#df_cluster[['cos_angle']].values
+		cos_theta_array = df_cluster['cos_angle'].values ; #print(cos_theta_array)#df_cluster[['cos_angle']].values
+		#cos_theta_array = ((cos_theta_array*1000).astype(int).astype(float))/1000
 
-		theta_array = np.arccos(cos_theta_array)
+
+		theta_array = np.arccos(cos_theta_array) #; print(theta_array)
+		theta_array = theta_array[~np.isnan(theta_array)]
+
+		sin_theta_array = np.sin(theta_array) #; print(sin_theta_array)
 
 		for angle in theta_array:
 			# add values to data frame which will be written to the output file
 			output_df = output_df.append({'filament_pair_angle' : float(angle), \
 										  'cluster_id' : int(cluster)},\
 										 ignore_index=True)
+			output_df_sin = output_df_sin.append({'filament_pair_sin_theta' : float(np.sin(angle)), 'cluster_id' : int(cluster)}, ignore_index=True)
 
 			if first_cluster:
 				output_df_largest_cluster = \
-					output_df_largest_cluster.append({'filament_pair_angle' : float(angle), \
-											  		  'cluster_id' : int(cluster)},\
-											 		  ignore_index=True)
+					output_df_largest_cluster.append({'filament_pair_angle' : float(angle)}, ignore_index=True)
+				output_df_sin_largest_cluster = output_df_sin_largest_cluster.append({'filament_pair_sin_theta' : float(np.sin(angle))}, ignore_index=True)
 		first_cluster=False
 
 
 	output_df.to_csv(output_file_path.with_suffix('.pair_angle_cluster.dat'), header=True, index=None, sep="\t")
 
-	output_df_largest_cluster.to_csv(output_file_path.with_suffix('.pair_angle_cluster_largest.dat'), header=True, index=None, sep="\t")
+	output_df_largest_cluster.to_csv(output_file_path.with_suffix('.pair_angle_cluster_largest.dat'), header=False, index=None, sep="\t")
+	output_df_sin.to_csv(output_file_path.with_suffix('.pair_sin_theta_cluster.dat'), header=True, index=None, sep="\t")
+	output_df_sin_largest_cluster.to_csv(output_file_path.with_suffix('.pair_sin_theta_cluster_largest.dat'), header=False, index=None, sep="\t")
 
 	### OLD CODE BELOW ###
 

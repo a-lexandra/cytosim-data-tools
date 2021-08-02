@@ -1,4 +1,17 @@
 #!/usr/bin/python
+"""Usage:
+python /path/to/radius-of-gyration.py -i cluster_positions.txt
+
+The cluster_positions.txt file is generated using a custom Cytosim report function:
+report2 fiber:cluster_fiber_position
+
+i.e.:
+
+singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:cluster_fiber_position frame=1000 > cluster_positions.txt
+
+Make sure the report is generated for the last frame only (not for all frames)
+"""
+
 import sys # for command line arguments
 import getopt # for option flags for command line arguments
 
@@ -74,7 +87,7 @@ def process_file(input_file_name, output_file_name):
 	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
 		for line in input_file:
 			if not (line.isspace() or ("%" in line and (not "posX" in line))):
-				temp_file.write(line.replace("%    ",""))
+				temp_file.write(line.replace("%",""))
 
 	# Delete columns with extraneous data
 	# Read the copy fixed width file that is output by Cytosim
@@ -89,7 +102,7 @@ def process_file(input_file_name, output_file_name):
 
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
-	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
+	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None) ; #print(temp_dataframe.columns)
 
 	### Write to output file ###
 	output_file_path = Path(output_file_name)
