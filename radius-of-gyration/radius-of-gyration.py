@@ -10,6 +10,14 @@ i.e.:
 singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:cluster_fiber_position frame=1000 > cluster_positions.txt
 
 Make sure the report is generated for the last frame only (not for all frames)
+
+Output file name is automatically generated as cluster_positions.rad_gyr.dat
+Can specify a custom output file name with the -o flag 
+
+Output file has two columns of data:
+<# of filaments in cluster>     <radius of gyration of that cluster>
+
+Data sorted in order of decreasing cluster size (first line will contain radius of gyration for the largest cluster)
 """
 
 import sys # for command line arguments
@@ -24,17 +32,7 @@ import pandas as pd # for processing data file
 
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
-
-
-# for calculating the distance matrix
-from scipy.spatial.distance import squareform, pdist
-
 import numpy as np
-from numpy.polynomial import Polynomial
-
-import matplotlib.pyplot as plt
-
-from scipy.interpolate import UnivariateSpline
 
 def get_file_names(argv):
 	"""Parse the command line input flags and arguments"""
@@ -89,30 +87,21 @@ def process_file(input_file_name, output_file_name):
 			if not (line.isspace() or ("%" in line and (not "posX" in line))):
 				temp_file.write(line.replace("%",""))
 
-	# Delete columns with extraneous data
-	# Read the copy fixed width file that is output by Cytosim
-	#temp_dataframe = pd.read_fwf(temp_file_name)
+	# Read the whitespace-delimited data file that is output by Cytosim
 	temp_dataframe = pd.read_csv(temp_file_name, delim_whitespace=True)
-
-	#%  cluster nb_fibers  fiber_id      posX      posY      dirX      dirY
-	# Drop columns with unnecessary data
-	#temp_dataframe = temp_dataframe.drop(["%"], axis=1)
-
-	#temp_dataframe = temp_dataframe.rename(columns={"identity":"filID"})
 
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
-	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None) ; #print(temp_dataframe.columns)
+	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None) 
 
 	### Write to output file ###
 	output_file_path = Path(output_file_name)
 
-	### Perform bundle length calculations ###
+	### Perform radius of gyration calculations ###
 
 	# split data frames into separate clusters
 
 	output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
-
 
 	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
 		# For each cluster, calculate the center of mass
@@ -126,13 +115,8 @@ def process_file(input_file_name, output_file_name):
 		for value in pos_array:
 			mass += 1
 			COM_coords += value
-			# plt.scatter(value[0], value[1])
 
 		COM_coords /= mass
-
-		# plt.scatter(COM_coords[0], COM_coords[1], marker="*")
-		#
-		# plt.show()
 
 		num_pts = 0
 
@@ -150,46 +134,11 @@ def process_file(input_file_name, output_file_name):
 
 		# add values to data frame which will be written to the output file
 		output_df = output_df.append({'cluster_size' : int(cluster_size), \
-									  'radius_of_gyration' : radius_gyr},\
-									 ignore_index=True)
-
-
+				'radius_of_gyration' : radius_gyr},\
+				 ignore_index=True)
 
 	output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
 
-	### OLD CODE BELOW ###
-
-	### Perform calculations ###
-
-	# Distance matrix
-	# https://stackoverflow.com/a/39205919
-	# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
-	#distance_matrix_dataframe = \
-	#	pd.DataFrame(squareform(pdist(temp_dataframe.iloc[:, lambda temp_dataframe: [1,2]])), \
-	#							columns=None, #temp_dataframe.filID.unique(), \
-	#							index=None ) #temp_dataframe.filID.unique())
-
-	# Angle matrix
-	# scipy's pdist with cosine metric calculates the cosine distance bw vectors:
-	# 1 - dot_prod = 1 - cos(angle)
-	# Subtract the cosine distance from 1 to get the cosine similarity,
-	# aka the cosine of the angle between the vectors
-	# https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html
-	#angle_matrix_dataframe = \
-	#	pd.DataFrame(1-squareform(pdist(temp_dataframe.iloc[:, lambda temp_dataframe: [3,4]], 'cosine')), \
-	#							columns=None, \
-	#							index=None)
-
-	# Take the arccos of all values in the dataframe to calculate angles
-	#angle_matrix_dataframe = angle_matrix_dataframe.apply(np.arccos)
-
-
-
-	#distance_matrix_dataframe.to_csv(output_file_path.with_suffix('.dist.dat'), header=False, index=None, sep="\t")
-	#angle_matrix_dataframe.to_csv(output_file_path.with_suffix('.ang.dat'), header=False, index=None, sep="\t")
-
-	### Delete the temporary file after writing to output ###
-	# https://stackoverflow.com/a/42641792
 	try:
 		os.remove(temp_file_path)
 	except OSError as e:  ## if failed, report it back to the user ##
@@ -200,7 +149,7 @@ def main(argv):
 	# Get file name(s) from command line arguments
 	(input_file_name, output_file_name) = get_file_names(argv)
 
-	# Do the pairwise calculations (distances and angles)
+	# Do the calculations and output results to file
 	process_file(input_file_name, output_file_name)
 
 if __name__ == "__main__":
