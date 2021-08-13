@@ -12,7 +12,7 @@ singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:po
 Make sure the report is generated for the last frame only (not for all frames)
 
 Output file name is automatically generated as ???.dat
-Can specify a custom output file name with the -o flag 
+Can specify a custom output file name with the -o flag
 
 """
 
@@ -88,55 +88,106 @@ def process_file(input_file_name, output_file_name):
 
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
-	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None) 
+	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
 
 	### Write to output file ###
 	output_file_path = Path(output_file_name)
 
-	#output_df = pd.DataFrame(columns=[])
+	output_df = pd.DataFrame(columns=[])
 
-	####### OLD CODE - delete later ##########
-	### Perform radius of gyration calculations ###
+	cluster_idx = 0
 
-	# split data frames into separate clusters
+	fil_length=0.25
 
-	output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
+	distance_cutoff=fil_length*2
+
+	# initialize the cluster id for all filaments (sequentially)
+
+	num_filaments=temp_dataframe.shape[0]
+	init_cluster_ids = np.arange(0,num_filaments)
+
+	temp_dataframe['cluster']=init_cluster_ids
+
+
+	for fil_i, df_fil_i in temp_dataframe.groupby('identity'):
+		fil_i_id=df_fil_i['identity'].values[0]
+		# temp_dataframe.loc[(temp_dataframe.identity == fil_i_id), 'identity']=69
+		fil_i_pos_arr=df_fil_i[['posX', 'posY']].values[0]
+
+		fil_i_cluster_id=df_fil_i['cluster'].values[0]
+
+		for fil_j, df_fil_j in temp_dataframe.groupby('identity'):
+			fil_j_id=df_fil_j['identity'].values[0]
+
+			if fil_j_id > fil_i_id:
+				fil_j_pos_arr=df_fil_j[['posX', 'posY']].values[0]
+
+				fil_j_cluster_id=df_fil_j['cluster'].values[0]
+
+				distance=np.linalg.norm(fil_i_pos_arr-fil_j_pos_arr)
+
+				if distance < distance_cutoff:
+					min_cluster_id=min(fil_i_cluster_id, fil_j_cluster_id)
+					# print(min_cluster_id)
+
+					temp_dataframe.loc[(temp_dataframe.identity == fil_i_id), 'cluster']=min_cluster_id
+					temp_dataframe.loc[(temp_dataframe.identity == fil_j_id), 'cluster']=min_cluster_id
+
+	new_cluster_idx = 0
+
+	# temp_dataframe=temp_dataframe.sort_values(by='cluster')
+
 
 	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
-		# For each cluster, calculate the center of mass
+		old_cluster_idx=df_cluster['cluster'].values[0]
+		temp_dataframe.loc[(temp_dataframe.cluster == old_cluster_idx), 'cluster'] = new_cluster_idx
+		new_cluster_idx+=1
 
-		pos_array = df_cluster[['posX','posY']].values
+	temp_dataframe.to_csv(output_file_path.with_suffix('.distance_cluster.dat'), header=True, index=None, sep="\t")
 
-		mass = 0
-
-		COM_coords = np.zeros(pos_array[0].shape)
-
-		for value in pos_array:
-			mass += 1
-			COM_coords += value
-
-		COM_coords /= mass
-
-		num_pts = 0
-
-		radius_gyr_sq = 0
-
-		for value in pos_array:
-			num_pts += 1
-			radius_gyr_sq += (np.linalg.norm(value - COM_coords))**2
-
-		radius_gyr_sq /= num_pts
-
-		radius_gyr = np.sqrt(radius_gyr_sq)
-
-		cluster_size = df_cluster.shape[0]
-
-		# add values to data frame which will be written to the output file
-		output_df = output_df.append({'cluster_size' : int(cluster_size), \
-				'radius_of_gyration' : radius_gyr},\
-				 ignore_index=True)
-
-	output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
+	# print(temp_dataframe.cluster.values[:])
+	# ####### OLD CODE - delete later ##########
+	# ### Perform radius of gyration calculations ###
+	#
+	# # split data frames into separate clusters
+	#
+	# output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
+	#
+	# for cluster, df_cluster in temp_dataframe.groupby('cluster'):
+	# 	# For each cluster, calculate the center of mass
+	#
+	# 	pos_array = df_cluster[['posX','posY']].values
+	#
+	# 	mass = 0
+	#
+	# 	COM_coords = np.zeros(pos_array[0].shape)
+	#
+	# 	for value in pos_array:
+	# 		mass += 1
+	# 		COM_coords += value
+	#
+	# 	COM_coords /= mass
+	#
+	# 	num_pts = 0
+	#
+	# 	radius_gyr_sq = 0
+	#
+	# 	for value in pos_array:
+	# 		num_pts += 1
+	# 		radius_gyr_sq += (np.linalg.norm(value - COM_coords))**2
+	#
+	# 	radius_gyr_sq /= num_pts
+	#
+	# 	radius_gyr = np.sqrt(radius_gyr_sq)
+	#
+	# 	cluster_size = df_cluster.shape[0]
+	#
+	# 	# add values to data frame which will be written to the output file
+	# 	output_df = output_df.append({'cluster_size' : int(cluster_size), \
+	# 			'radius_of_gyration' : radius_gyr},\
+	# 			 ignore_index=True)
+	#
+	# output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
