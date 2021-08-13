@@ -136,7 +136,8 @@ def process_file(input_file_name, output_file_name):
 	new_cluster_idx = 0
 
 	# temp_dataframe=temp_dataframe.sort_values(by='cluster')
-
+	temp_dataframe['cluster_size'] = temp_dataframe.groupby('cluster')['cluster'].transform(pd.Series.count)
+	temp_dataframe=temp_dataframe.sort_values('cluster_size', ascending=False)
 
 	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
 		old_cluster_idx=df_cluster['cluster'].values[0]
@@ -146,10 +147,7 @@ def process_file(input_file_name, output_file_name):
 	# temp_dataframe.to_csv(output_file_path.with_suffix('.distance_cluster.dat'), header=True, index=None, sep="\t")
 
 	# print(temp_dataframe.cluster.values[:])
-	# ####### OLD CODE - delete later ##########
 	# ### Perform radius of gyration calculations ###
-	#
-	# # split data frames into separate clusters
 	#
 	output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
 
@@ -188,6 +186,49 @@ def process_file(input_file_name, output_file_name):
 				 ignore_index=True)
 
 	output_df.sort_values(by='cluster_size',ascending=False).to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
+
+	output_df = pd.DataFrame(columns=['filament_pair_angle', 'cluster_id'])
+	output_df_largest_cluster = pd.DataFrame(columns=['filament_pair_angle'])
+	output_df_sin = pd.DataFrame(columns=['filament_pair_sin_theta', 'cluster_id'])
+	output_df_sin_largest_cluster = pd.DataFrame(columns=['filament_pair_sin_theta'])
+
+	first_cluster=True
+
+	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
+
+		for fil_i, df_fil_i in df_cluster.groupby('identity'):
+			fil_i_id=df_fil_i['identity'].values[0]
+			fil_i_dir_arr = df_fil_i[['dirX', 'dirY']].values[0]
+
+			for fil_j, df_fil_j in df_cluster.groupby('identity'):
+				fil_j_id=df_fil_j['identity'].values[0]
+
+				if fil_j_id > fil_i_id:
+
+					fil_j_dir_arr = df_fil_j[['dirX', 'dirY']].values[0]
+
+					theta=np.arccos(np.dot(fil_i_dir_arr/np.linalg.norm(fil_i_dir_arr), fil_j_dir_arr/np.linalg.norm(fil_j_dir_arr)))
+
+					sin_theta = np.sin(theta)
+
+					# add values to data frame which will be written to the output file
+					output_df = output_df.append({'filament_pair_angle' : float(theta), \
+												  'cluster_id' : int(cluster)},\
+												 ignore_index=True)
+					output_df_sin = output_df_sin.append({'filament_pair_sin_theta' : float(sin_theta), 'cluster_id' : int(cluster)}, ignore_index=True)
+
+					if first_cluster:
+						output_df_largest_cluster = \
+							output_df_largest_cluster.append({'filament_pair_angle' : float(theta)}, ignore_index=True)
+						output_df_sin_largest_cluster = output_df_sin_largest_cluster.append({'filament_pair_sin_theta' : float(sin_theta)}, ignore_index=True)
+
+		first_cluster=False
+
+	output_df.to_csv(output_file_path.with_suffix('.pair_angle_cluster.dat'), header=True, index=None, sep="\t")
+
+	output_df_largest_cluster.to_csv(output_file_path.with_suffix('.pair_angle_cluster_largest.dat'), header=False, index=None, sep="\t")
+	output_df_sin.to_csv(output_file_path.with_suffix('.pair_sin_theta_cluster.dat'), header=True, index=None, sep="\t")
+	output_df_sin_largest_cluster.to_csv(output_file_path.with_suffix('.pair_sin_theta_cluster_largest.dat'), header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
