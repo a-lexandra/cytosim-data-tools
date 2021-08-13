@@ -143,7 +143,7 @@ def process_file(input_file_name, output_file_name):
 		temp_dataframe.loc[(temp_dataframe.cluster == old_cluster_idx), 'cluster'] = new_cluster_idx
 		new_cluster_idx+=1
 
-	temp_dataframe.to_csv(output_file_path.with_suffix('.distance_cluster.dat'), header=True, index=None, sep="\t")
+	# temp_dataframe.to_csv(output_file_path.with_suffix('.distance_cluster.dat'), header=True, index=None, sep="\t")
 
 	# print(temp_dataframe.cluster.values[:])
 	# ####### OLD CODE - delete later ##########
@@ -151,43 +151,43 @@ def process_file(input_file_name, output_file_name):
 	#
 	# # split data frames into separate clusters
 	#
-	# output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
-	#
-	# for cluster, df_cluster in temp_dataframe.groupby('cluster'):
-	# 	# For each cluster, calculate the center of mass
-	#
-	# 	pos_array = df_cluster[['posX','posY']].values
-	#
-	# 	mass = 0
-	#
-	# 	COM_coords = np.zeros(pos_array[0].shape)
-	#
-	# 	for value in pos_array:
-	# 		mass += 1
-	# 		COM_coords += value
-	#
-	# 	COM_coords /= mass
-	#
-	# 	num_pts = 0
-	#
-	# 	radius_gyr_sq = 0
-	#
-	# 	for value in pos_array:
-	# 		num_pts += 1
-	# 		radius_gyr_sq += (np.linalg.norm(value - COM_coords))**2
-	#
-	# 	radius_gyr_sq /= num_pts
-	#
-	# 	radius_gyr = np.sqrt(radius_gyr_sq)
-	#
-	# 	cluster_size = df_cluster.shape[0]
-	#
-	# 	# add values to data frame which will be written to the output file
-	# 	output_df = output_df.append({'cluster_size' : int(cluster_size), \
-	# 			'radius_of_gyration' : radius_gyr},\
-	# 			 ignore_index=True)
-	#
-	# output_df.to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
+	output_df = pd.DataFrame(columns=['cluster_size', 'radius_of_gyration'])
+
+	for cluster, df_cluster in temp_dataframe.groupby('cluster'):
+		# For each cluster, calculate the center of mass
+
+		pos_array = df_cluster[['posX','posY']].values
+
+		mass = 0
+
+		COM_coords = np.zeros(pos_array[0].shape)
+
+		for value in pos_array:
+			mass += 1
+			COM_coords += value
+
+		COM_coords /= mass
+
+		num_pts = 0
+
+		radius_gyr_sq = 0
+
+		for value in pos_array:
+			num_pts += 1
+			radius_gyr_sq += (np.linalg.norm(value - COM_coords))**2
+
+		radius_gyr_sq /= num_pts
+
+		radius_gyr = np.sqrt(radius_gyr_sq)
+
+		cluster_size = df_cluster.shape[0]
+
+		# add values to data frame which will be written to the output file
+		output_df = output_df.append({'cluster_size' : int(cluster_size), \
+				'radius_of_gyration' : radius_gyr},\
+				 ignore_index=True)
+
+	output_df.sort_values(by='cluster_size',ascending=False).to_csv(output_file_path.with_suffix('.rad_gyr.dat'), header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
