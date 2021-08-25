@@ -122,14 +122,22 @@ def process_file(input_file_name, output_file_name):
 				distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
 				distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
 
-				output_df = output_df.append({'distance_MM' : float(distance_MM), \
-						'distance_PM' : float(distance_PM), \
-						'distance_PP' : float(distance_PP)}, \
-						 ignore_index=True)
+				if distance_MM < distance_cutoff:
+					output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
 
-	output_df.distance_MM.to_csv(output_file_path.with_suffix('.distance_MM.dat'), header=False, index=None, sep="\t")
-	output_df.distance_PM.to_csv(output_file_path.with_suffix('.distance_PM.dat'), header=False, index=None, sep="\t")
-	output_df.distance_PP.to_csv(output_file_path.with_suffix('.distance_PP.dat'), header=False, index=None, sep="\t")
+				if distance_PM < distance_cutoff:
+					output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
+
+				if distance_PP < distance_cutoff:
+					output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
+
+	df_MM=output_df.distance_MM.dropna()
+	df_PM=output_df.distance_PM.dropna()
+	df_PP=output_df.distance_PP.dropna()
+
+	df_MM.to_csv(output_file_path.with_suffix('.distance_MM.dat'), header=False, index=None, sep="\t")
+	df_PM.to_csv(output_file_path.with_suffix('.distance_PM.dat'), header=False, index=None, sep="\t")
+	df_PP.to_csv(output_file_path.with_suffix('.distance_PP.dat'), header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
