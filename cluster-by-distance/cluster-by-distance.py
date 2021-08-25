@@ -93,8 +93,6 @@ def process_file(input_file_name, output_file_name):
 	### Write to output file ###
 	output_file_path = Path(output_file_name)
 
-	output_df = pd.DataFrame(columns=[])
-
 	cluster_idx = 0
 
 	fil_length=0.25
