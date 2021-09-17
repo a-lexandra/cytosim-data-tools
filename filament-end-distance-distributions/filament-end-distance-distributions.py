@@ -11,8 +11,6 @@ Can specify a custom output file name with the -o flag
 """
 
 import sys # for command line arguments
-# remove getopt, replace with argparse
-import getopt # for option flags for command line arguments
 
 # https://docs.python.org/3/library/argparse.html
 import argparse
@@ -87,7 +85,7 @@ def process_file(input_file_name, output_file_name, \
 
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
-	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
+	#temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
 
 	### Write to output file ###
 	output_file_path = Path(output_file_name)
