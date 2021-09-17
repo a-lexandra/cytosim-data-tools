@@ -150,7 +150,10 @@ def main(argv):
 		generate_minus_minus) = get_file_names(argv)
 
 	# Do the calculations and output results to file
-	#process_file(input_file_name, output_file_name)
+	process_file(input_file_name, output_file_name)
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+	# Performance profiling code
+	import timeit
+	print(timeit.repeat('main(sys.argv[1:])', setup="from __main__ import main",number=1,repeat=10))
+	#main(sys.argv[1:])
