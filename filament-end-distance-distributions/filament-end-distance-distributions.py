@@ -39,7 +39,7 @@ def get_file_names(argv):
 
 	parser.add_argument('-i', '--input', help='-i <input file name>', type=str, required=True)
 	parser.add_argument('-o', '--output', help='-o <output file name>', type=str, required=False)
-	parser.add_argument('--pp', action='count', default=1)
+	parser.add_argument('--pp', action='count', default=0)
 	parser.add_argument('--pm','--mp', action='count', default=0)
 	parser.add_argument('--mm', action='count', default=0)
 
@@ -59,7 +59,8 @@ def get_file_names(argv):
 
 	return (input_file_name, output_file_name, bool(args.pp), bool(args.pm), bool(args.mm))
 
-def process_file(input_file_name, output_file_name):
+def process_file(input_file_name, output_file_name, \
+				 generate_plus_plus, generate_plus_minus, generate_minus_minus):
 	"""Open input file, make a copy, remove unnecessary lines, process data,
 	write to output file
 	"""
@@ -116,18 +117,24 @@ def process_file(input_file_name, output_file_name):
 				fil_j_pos_M_arr=df_fil_j[['posMX', 'posMY']].values[0]
 				fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
 
-				distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
-				distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
-				distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
+				if generate_plus_plus:
+					distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
+					if distance_PP < distance_cutoff:
+						output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
 
-				if distance_MM < distance_cutoff:
-					output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
+				if generate_plus_minus:
+					distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
+					if distance_PM < distance_cutoff:
+						output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
 
-				if distance_PM < distance_cutoff:
-					output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
+				if generate_minus_minus:
+					distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
+					if distance_MM < distance_cutoff:
+						output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
 
-				if distance_PP < distance_cutoff:
-					output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
+
+
+
 
 	df_MM=output_df.distance_MM.dropna()
 	df_PM=output_df.distance_PM.dropna()
@@ -150,7 +157,8 @@ def main(argv):
 		generate_minus_minus) = get_file_names(argv)
 
 	# Do the calculations and output results to file
-	process_file(input_file_name, output_file_name)
+	process_file(input_file_name, output_file_name,\
+				 generate_plus_plus, generate_plus_minus, generate_minus_minus)
 
 if __name__ == "__main__":
 	# Performance profiling code
