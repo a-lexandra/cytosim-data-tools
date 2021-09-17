@@ -1,24 +1,23 @@
 #!/usr/bin/python
 """Usage:
-python /path/to/cluster-by-distance.py -i position.txt
+python /path/to/script.py -i input_file.txt
 
-The position.txt file is generated using a custom Cytosim report function:
-report2 fiber:position
-
-i.e.:
-
-singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:position frame=1000 > positions.txt
-
-Make sure the report is generated for the last frame only (not for all frames)
+The input file is a single-frame output of Cytosim report function ...
 
 Output file name is automatically generated as ???.dat
+If input file already has '.dat' extension, an additional '.dat' is appended to
+the input file name to avoid overwriting the input file.
 Can specify a custom output file name with the -o flag
-
 """
 
 import sys # for command line arguments
+# remove getopt, replace with argparse
 import getopt # for option flags for command line arguments
 
+# https://docs.python.org/3/library/argparse.html
+import argparse
+
+# https://docs.python.org/3/library/pathlib.html
 # https://stackoverflow.com/a/42288083
 from pathlib import Path # for stripping filename extensions
 
@@ -33,33 +32,32 @@ import numpy as np
 def get_file_names(argv):
 	"""Parse the command line input flags and arguments"""
 
-	# https://docs.python.org/3/library/getopt.html
 	input_file_name = ''
 	output_file_name = ''
 
-	try:
-		opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
-	except getopt.GetoptError:
-		# If no command line arguments are given, return usage message and exit
-		print('test.py -i <inputfile> -o <outputfile>')
-		sys.exit(2)
+	parser = argparse.ArgumentParser(description='Calculate the end-end distribution(s) of filaments in largest cluster only (as defined by motor connectivity),')
 
-	for opt, arg in opts:
-		if opt == '-h':
-			# Print help info for argument usage
-			print('test.py -i <inputfile> -o <outputfile>')
-			sys.exit()
-		elif opt in ("-i", "--ifile"):
-			input_file_name = arg
-		elif opt in ("-o", "--ofile"):
-			output_file_name = arg
+	parser.add_argument('-i', '--input', help='-i <input file name>', type=str, required=True)
+	parser.add_argument('-o', '--output', help='-o <output file name>', type=str, required=False)
+	parser.add_argument('--pp', action='count', default=1)
+	parser.add_argument('--pm','--mp', action='count', default=0)
+	parser.add_argument('--mm', action='count', default=0)
 
-	# If outputfile name not provided, replace/add suffix '.dat' to input file name
+	args = parser.parse_args(argv)
+
+	input_file_name = args.input
+
+	# If output file name parameter was not specified, set to default
+	# Default: remove extension of input file and replace with '.dat'
 	if not output_file_name:
 		input_file_path = Path(input_file_name)
-		output_file_name = input_file_path.with_suffix('.dat')
+		input_ext = input_file_path.suffix.lower()
+		if input_ext!='.dat':
+			output_file_name = input_file_path.with_suffix('.dat')
+		else:
+			output_file_name = input_file_path.with_suffix('.dat.dat')
 
-	return (input_file_name, output_file_name)
+	return (input_file_name, output_file_name, bool(args.pp), bool(args.pm), bool(args.mm))
 
 def process_file(input_file_name, output_file_name):
 	"""Open input file, make a copy, remove unnecessary lines, process data,
@@ -147,10 +145,12 @@ def process_file(input_file_name, output_file_name):
 def main(argv):
 
 	# Get file name(s) from command line arguments
-	(input_file_name, output_file_name) = get_file_names(argv)
+	(input_file_name, output_file_name, \
+		generate_plus_plus, generate_plus_minus, \
+		generate_minus_minus) = get_file_names(argv)
 
 	# Do the calculations and output results to file
-	process_file(input_file_name, output_file_name)
+	#process_file(input_file_name, output_file_name)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
