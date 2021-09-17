@@ -15,7 +15,6 @@ Output file name is automatically generated as ???.dat
 Can specify a custom output file name with the -o flag
 
 """
-
 import sys # for command line arguments
 import getopt # for option flags for command line arguments
 
@@ -148,9 +147,11 @@ def main(argv):
 
 	# Get file name(s) from command line arguments
 	(input_file_name, output_file_name) = get_file_names(argv)
-
 	# Do the calculations and output results to file
 	process_file(input_file_name, output_file_name)
 
 if __name__ == "__main__":
+	# Performance profiling code
+        #import timeit
+	#print(timeit.repeat('main(sys.argv[1:])', setup="from __main__ import main",number=1,repeat=10))
 	main(sys.argv[1:])
