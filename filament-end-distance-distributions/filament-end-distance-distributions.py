@@ -27,6 +27,8 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 import numpy as np
 
+import functools
+
 def get_file_names(argv):
 	"""Parse the command line input flags and arguments"""
 
@@ -56,6 +58,10 @@ def get_file_names(argv):
 			output_file_name = input_file_path.with_suffix('.dat.dat')
 
 	return (input_file_name, output_file_name, bool(args.pp), bool(args.pm), bool(args.mm))
+
+@functools.lru_cache(maxsize=20000)
+def calc_distance(arr_a, arr_b):
+	return np.linalg.norm(np.asarray(arr_a) - np.asarray(arr_b))
 
 def process_file(input_file_name, output_file_name, \
 				 generate_plus_plus, generate_plus_minus, generate_minus_minus):
@@ -116,43 +122,19 @@ def process_file(input_file_name, output_file_name, \
 				fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
 
 				if generate_plus_plus:
-					distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
+					distance_PP=calc_distance(tuple(fil_i_pos_P_arr), tuple(fil_j_pos_P_arr))
 					if distance_PP < distance_cutoff:
 						output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
 
 				if generate_plus_minus:
-					distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
+					distance_PM=calc_distance(tuple(fil_i_pos_P_arr), tuple(fil_j_pos_M_arr))
 					if distance_PM < distance_cutoff:
 						output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
 
 				if generate_minus_minus:
-					distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
+					distance_MM=calc_distance(tuple(fil_i_pos_M_arr), tuple(fil_j_pos_M_arr))
 					if distance_MM < distance_cutoff:
 						output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
-
-
-	# for i_idx in range(0,num_filaments):
-	# 	for j_idx in range(i_idx,num_filaments):
-	# 		fil_i_pos_M_arr=temp_dataframe.iloc[i_idx][['posMX', 'posMY']].values
-	# 		fil_i_pos_P_arr=temp_dataframe.iloc[i_idx][['posPX', 'posPY']].values
-
-	# 		fil_j_pos_M_arr=temp_dataframe.iloc[j_idx][['posMX', 'posMY']].values
-	# 		fil_j_pos_P_arr=temp_dataframe.iloc[j_idx][['posPX', 'posPY']].values
-
-	# 		if generate_plus_plus:
-	# 			distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
-	# 			if distance_PP < distance_cutoff:
-	# 				output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
-
-	# 		if generate_plus_minus:
-	# 			distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
-	# 			if distance_PM < distance_cutoff:
-	# 				output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
-
-	# 		if generate_minus_minus:
-	# 			distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
-	# 			if distance_MM < distance_cutoff:
-	# 				output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
 
 	if generate_minus_minus:
 		df_MM=output_df.distance_MM.dropna()
@@ -181,6 +163,8 @@ def main(argv):
 	# Do the calculations and output results to file
 	process_file(input_file_name, output_file_name,\
 				 generate_plus_plus, generate_plus_minus, generate_minus_minus)
+
+	print(calc_distance.cache_info())
 
 if __name__ == "__main__":
 	# Performance profiling code
