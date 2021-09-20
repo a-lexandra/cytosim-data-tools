@@ -59,7 +59,6 @@ def get_file_names(argv):
 
 	return (input_file_name, output_file_name, bool(args.pp), bool(args.pm), bool(args.mm))
 
-@functools.lru_cache(maxsize=20000)
 def calc_distance(arr_a, arr_b):
 	return np.linalg.norm(np.asarray(arr_a) - np.asarray(arr_b))
 
@@ -164,7 +163,6 @@ def main(argv):
 	process_file(input_file_name, output_file_name,\
 				 generate_plus_plus, generate_plus_minus, generate_minus_minus)
 
-	print(calc_distance.cache_info())
 
 if __name__ == "__main__":
 	# Performance profiling code
