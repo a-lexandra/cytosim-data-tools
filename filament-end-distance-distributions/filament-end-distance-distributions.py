@@ -152,6 +152,6 @@ def main(argv):
 
 if __name__ == "__main__":
 	# Performance profiling code
-        #import timeit
-	#print(timeit.repeat('main(sys.argv[1:])', setup="from __main__ import main",number=1,repeat=10))
-	main(sys.argv[1:])
+	import timeit
+	print(timeit.repeat('main(sys.argv[1:])', setup="from __main__ import main",number=1,repeat=10))
+	#main(sys.argv[1:])
