@@ -121,17 +121,17 @@ def process_file(input_file_name, output_file_name, \
 				fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
 
 				if generate_plus_plus:
-					distance_PP=calc_distance(tuple(fil_i_pos_P_arr), tuple(fil_j_pos_P_arr))
+					distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
 					if distance_PP < distance_cutoff:
 						output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
 
 				if generate_plus_minus:
-					distance_PM=calc_distance(tuple(fil_i_pos_P_arr), tuple(fil_j_pos_M_arr))
+					distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
 					if distance_PM < distance_cutoff:
 						output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
 
 				if generate_minus_minus:
-					distance_MM=calc_distance(tuple(fil_i_pos_M_arr), tuple(fil_j_pos_M_arr))
+					distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
 					if distance_MM < distance_cutoff:
 						output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
 
