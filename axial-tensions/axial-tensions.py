@@ -9,6 +9,9 @@ i.e.:
 
 singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:forces frame=1000 > forces.txt
 
+For cluster data:
+report2 fiber:cluster_fiber_position 
+
 Make sure the report is generated for the last frame only (not for all frames)
 
 Output file name is automatically generated as ???.dat
@@ -59,9 +62,6 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 	"""Open input file, make a copy, remove unnecessary lines, process data,
 	write to output file
 	"""
-
-	print(input_file_name, output_file_name, cluster_file_name)
-
 	# Copy input file to a temporary file which will be modified
 	# (modifications: remove lines and columns with irrelevant comments and data)
 
@@ -76,69 +76,58 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 	# https://stackoverflow.com/a/11969474 , https://stackoverflow.com/a/2369538
 	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
 		for line in input_file:
-			if not (line.isspace() or ("%" in line and (not "class" in line))):
+			if not (line.isspace() or ("%" in line and (not "identity" in line))):
 				temp_file.write(line.replace("%",""))
 
 	# Read the whitespace-delimited data file that is output by Cytosim
 	temp_dataframe = pd.read_csv(temp_file_name, delim_whitespace=True)
 
+	# If cluster data file was provided, add cluster data to dataframe
+	if cluster_file_name:
+		cluster_file_path = Path(cluster_file_name)
+		cluster_temp_file_name = cluster_file_path.with_suffix('.tmp')
+		cluster_temp_file_path = Path(cluster_temp_file_name)
+
+		with open(cluster_file_name) as cluster_file, open(cluster_temp_file_name,'w') as temp_file:
+				for line in cluster_file:
+					if not (line.isspace() or ("%" in line and (not "fiber_id" in line))):
+						temp_file.write(line.replace("%","").replace("fiber_id","identity"))
+
+		# Retain information on filament id and cluster id only
+		cluster_temp_dataframe = pd.read_csv(cluster_temp_file_name,delim_whitespace=True)[['cluster','identity']]
+
+		# merge cluster id information into full dataframe
+		# https://stackoverflow.com/a/65450775
+		temp_dataframe = temp_dataframe.merge(cluster_temp_dataframe, on='identity')
+
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
 	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
 
+	# Define output dataframe
+	if cluster_file_name:
+		output_df = pd.DataFrame(columns=['identity', 'tension', 'cluster'])
+	else:
+		output_df = pd.DataFrame(columns=['identity', 'tension'])
 
-	### code below need to be modififed - taken from a filament end distance script
-	### Write to output file ###
-	# output_file_path = Path(output_file_name)
-	#
-	# cluster_idx = 0
-	#
-	# fil_length=0.25
-	#
-	# distance_cutoff=fil_length*2
-	#
-	# # initialize the cluster id for all filaments (sequentially)
-	#
-	# num_filaments=temp_dataframe.shape[0]
-	#
-	# output_df = pd.DataFrame(columns=['distance_MM', 'distance_PM', 'distance_PP'])
-	#
-	# for fil_i, df_fil_i in temp_dataframe.groupby('identity'):
-	# 	fil_i_id=df_fil_i['identity'].values[0]
-	# 	# temp_dataframe.loc[(temp_dataframe.identity == fil_i_id), 'identity']=69
-	# 	fil_i_pos_M_arr=df_fil_i[['posMX', 'posMY']].values[0]
-	# 	fil_i_pos_P_arr=df_fil_i[['posPX', 'posPY']].values[0]
-	#
-	# 	for fil_j, df_fil_j in temp_dataframe.groupby('identity'):
-	# 		fil_j_id=df_fil_j['identity'].values[0]
-	#
-	# 		if fil_j_id > fil_i_id:
-	# 			fil_j_pos_M_arr=df_fil_j[['posMX', 'posMY']].values[0]
-	# 			fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
-	#
-	# 			distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
-	# 			distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
-	# 			distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
-	#
-	# 			if distance_MM < distance_cutoff:
-	# 				output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
-	#
-	# 			if distance_PM < distance_cutoff:
-	# 				output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
-	#
-	# 			if distance_PP < distance_cutoff:
-	# 				output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
-	#
-	# df_MM=output_df.distance_MM.dropna()
-	# df_PM=output_df.distance_PM.dropna()
-	# df_PP=output_df.distance_PP.dropna()
-	#
-	# df_MM.to_csv(output_file_path.with_suffix('.distance_MM.dat'), header=False, index=None, sep="\t")
-	# df_PM.to_csv(output_file_path.with_suffix('.distance_PM.dat'), header=False, index=None, sep="\t")
-	# df_PP.to_csv(output_file_path.with_suffix('.distance_PP.dat'), header=False, index=None, sep="\t")
+	# iterate over filament id and sum tensions
+	for fil_id, df_filament in temp_dataframe.groupby('identity'):
+		total_tension=df_filament['tension'].sum()
+
+		if cluster_file_name:
+			new_df = pd.DataFrame([[fil_id,total_tension,df_filament['cluster'].values[0]]], columns=['identity','tension','cluster'])
+		else:
+			new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
+
+		output_df =pd.concat([output_df, new_df], ignore_index=True)
+
+	# Write to output file
+	output_file_path = Path(output_file_name)
+	output_df.to_csv(output_file_path, float_format='%.3f', header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
+		os.remove(cluster_temp_file_path)
 	except OSError as e:  ## if failed, report it back to the user ##
 		print ("Error: %s - %s." % (e.filename, e.strerror))
 
