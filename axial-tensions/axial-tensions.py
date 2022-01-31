@@ -2,7 +2,7 @@
 """Usage:
 python /path/to/axial-tensions.py -i forces.txt
 
-The tension.txt file is generated using a custom Cytosim report function:
+The forces.txt file is generated using a custom Cytosim report function:
 report2 fiber:forces
 
 i.e.:
@@ -16,7 +16,7 @@ Can specify a custom output file name with the -o flag
 
 """
 import sys # for command line arguments
-import getopt # for option flags for command line arguments
+import argparse # for parsing command line arguments to script
 
 # https://stackoverflow.com/a/42288083
 from pathlib import Path # for stripping filename extensions
@@ -29,41 +29,38 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 import numpy as np
 
-def get_file_names(argv):
+def get_file_names():
 	"""Parse the command line input flags and arguments"""
 
-	# https://docs.python.org/3/library/getopt.html
 	input_file_name = ''
 	output_file_name = ''
+	cluster_file_name = ''
 
-	try:
-		opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
-	except getopt.GetoptError:
-		# If no command line arguments are given, return usage message and exit
-		print('test.py -i <inputfile> -o <outputfile>')
-		sys.exit(2)
+	parser = argparse.ArgumentParser(description='')
 
-	for opt, arg in opts:
-		if opt == '-h':
-			# Print help info for argument usage
-			print('test.py -i <inputfile> -o <outputfile>')
-			sys.exit()
-		elif opt in ("-i", "--ifile"):
-			input_file_name = arg
-		elif opt in ("-o", "--ofile"):
-			output_file_name = arg
+	parser.add_argument('--ifile', '-i', type=str, help='')
+	parser.add_argument('--ofile', '-o', type=str, help='')
+	parser.add_argument('--clusters', '-c', type=str, help='')
+
+	args = parser.parse_args()
+
+	input_file_name=args.ifile
+	output_file_name=args.ofile
+	cluster_file_name=args.clusters
 
 	# If outputfile name not provided, replace/add suffix '.dat' to input file name
 	if not output_file_name:
 		input_file_path = Path(input_file_name)
 		output_file_name = input_file_path.with_suffix('.dat')
 
-	return (input_file_name, output_file_name)
+	return (input_file_name, output_file_name, cluster_file_name)
 
-def process_file(input_file_name, output_file_name):
+def process_file(input_file_name, output_file_name, cluster_file_name):
 	"""Open input file, make a copy, remove unnecessary lines, process data,
 	write to output file
 	"""
+
+	print(input_file_name, output_file_name, cluster_file_name)
 
 	# Copy input file to a temporary file which will be modified
 	# (modifications: remove lines and columns with irrelevant comments and data)
@@ -90,55 +87,55 @@ def process_file(input_file_name, output_file_name):
 	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
 
 
-    ### code below need to be modififed - taken from a filament end distance script
+	### code below need to be modififed - taken from a filament end distance script
 	### Write to output file ###
-	output_file_path = Path(output_file_name)
-
-	cluster_idx = 0
-
-	fil_length=0.25
-
-	distance_cutoff=fil_length*2
-
-	# initialize the cluster id for all filaments (sequentially)
-
-	num_filaments=temp_dataframe.shape[0]
-
-	output_df = pd.DataFrame(columns=['distance_MM', 'distance_PM', 'distance_PP'])
-
-	for fil_i, df_fil_i in temp_dataframe.groupby('identity'):
-		fil_i_id=df_fil_i['identity'].values[0]
-		# temp_dataframe.loc[(temp_dataframe.identity == fil_i_id), 'identity']=69
-		fil_i_pos_M_arr=df_fil_i[['posMX', 'posMY']].values[0]
-		fil_i_pos_P_arr=df_fil_i[['posPX', 'posPY']].values[0]
-
-		for fil_j, df_fil_j in temp_dataframe.groupby('identity'):
-			fil_j_id=df_fil_j['identity'].values[0]
-
-			if fil_j_id > fil_i_id:
-				fil_j_pos_M_arr=df_fil_j[['posMX', 'posMY']].values[0]
-				fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
-
-				distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
-				distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
-				distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
-
-				if distance_MM < distance_cutoff:
-					output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
-
-				if distance_PM < distance_cutoff:
-					output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
-
-				if distance_PP < distance_cutoff:
-					output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
-
-	df_MM=output_df.distance_MM.dropna()
-	df_PM=output_df.distance_PM.dropna()
-	df_PP=output_df.distance_PP.dropna()
-
-	df_MM.to_csv(output_file_path.with_suffix('.distance_MM.dat'), header=False, index=None, sep="\t")
-	df_PM.to_csv(output_file_path.with_suffix('.distance_PM.dat'), header=False, index=None, sep="\t")
-	df_PP.to_csv(output_file_path.with_suffix('.distance_PP.dat'), header=False, index=None, sep="\t")
+	# output_file_path = Path(output_file_name)
+	#
+	# cluster_idx = 0
+	#
+	# fil_length=0.25
+	#
+	# distance_cutoff=fil_length*2
+	#
+	# # initialize the cluster id for all filaments (sequentially)
+	#
+	# num_filaments=temp_dataframe.shape[0]
+	#
+	# output_df = pd.DataFrame(columns=['distance_MM', 'distance_PM', 'distance_PP'])
+	#
+	# for fil_i, df_fil_i in temp_dataframe.groupby('identity'):
+	# 	fil_i_id=df_fil_i['identity'].values[0]
+	# 	# temp_dataframe.loc[(temp_dataframe.identity == fil_i_id), 'identity']=69
+	# 	fil_i_pos_M_arr=df_fil_i[['posMX', 'posMY']].values[0]
+	# 	fil_i_pos_P_arr=df_fil_i[['posPX', 'posPY']].values[0]
+	#
+	# 	for fil_j, df_fil_j in temp_dataframe.groupby('identity'):
+	# 		fil_j_id=df_fil_j['identity'].values[0]
+	#
+	# 		if fil_j_id > fil_i_id:
+	# 			fil_j_pos_M_arr=df_fil_j[['posMX', 'posMY']].values[0]
+	# 			fil_j_pos_P_arr=df_fil_j[['posPX', 'posPY']].values[0]
+	#
+	# 			distance_MM=np.linalg.norm(fil_i_pos_M_arr - fil_j_pos_M_arr)
+	# 			distance_PM=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_M_arr)
+	# 			distance_PP=np.linalg.norm(fil_i_pos_P_arr - fil_j_pos_P_arr)
+	#
+	# 			if distance_MM < distance_cutoff:
+	# 				output_df = output_df.append({'distance_MM' : float(distance_MM)}, ignore_index=True)
+	#
+	# 			if distance_PM < distance_cutoff:
+	# 				output_df = output_df.append({'distance_PM' : float(distance_PM)}, ignore_index=True)
+	#
+	# 			if distance_PP < distance_cutoff:
+	# 				output_df = output_df.append({'distance_PP' : float(distance_PP)}, ignore_index=True)
+	#
+	# df_MM=output_df.distance_MM.dropna()
+	# df_PM=output_df.distance_PM.dropna()
+	# df_PP=output_df.distance_PP.dropna()
+	#
+	# df_MM.to_csv(output_file_path.with_suffix('.distance_MM.dat'), header=False, index=None, sep="\t")
+	# df_PM.to_csv(output_file_path.with_suffix('.distance_PM.dat'), header=False, index=None, sep="\t")
+	# df_PP.to_csv(output_file_path.with_suffix('.distance_PP.dat'), header=False, index=None, sep="\t")
 
 	try:
 		os.remove(temp_file_path)
@@ -148,9 +145,9 @@ def process_file(input_file_name, output_file_name):
 def main(argv):
 
 	# Get file name(s) from command line arguments
-	(input_file_name, output_file_name) = get_file_names(argv)
+	(input_file_name, output_file_name, cluster_file_name) = get_file_names()
 	# Do the calculations and output results to file
-	process_file(input_file_name, output_file_name)
+	process_file(input_file_name, output_file_name, cluster_file_name)
 
 if __name__ == "__main__":
 	# Performance profiling code
