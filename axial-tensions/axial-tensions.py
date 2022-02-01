@@ -10,7 +10,7 @@ i.e.:
 singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:forces frame=1000 > forces.txt
 
 For cluster data:
-report2 fiber:cluster_fiber_position 
+report2 fiber:cluster_fiber_position
 
 Make sure the report is generated for the last frame only (not for all frames)
 
@@ -127,7 +127,8 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 
 	try:
 		os.remove(temp_file_path)
-		os.remove(cluster_temp_file_path)
+		if cluster_file_name:
+			os.remove(cluster_temp_file_path)
 	except OSError as e:  ## if failed, report it back to the user ##
 		print ("Error: %s - %s." % (e.filename, e.strerror))
 
