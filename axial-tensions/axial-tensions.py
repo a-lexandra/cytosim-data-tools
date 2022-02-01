@@ -32,7 +32,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 import numpy as np
 
-def get_file_names():
+def get_args():
 	"""Parse the command line input flags and arguments"""
 
 	input_file_name = ''
@@ -44,9 +44,17 @@ def get_file_names():
 	parser.add_argument('--ifile', '-i', type=str, help='')
 	parser.add_argument('--ofile', '-o', type=str, help='')
 	parser.add_argument('--clusters', '-c', type=str, help='')
+	# https://stackoverflow.com/a/31347222
+	parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate tensions for filaments beloning to the largest cluster, ignore all other filaments')
 
 	args = parser.parse_args()
 
+	return args
+
+def process_file(args):
+	"""Open input file, make a copy, remove unnecessary lines, process data,
+	write to output file
+	"""
 	input_file_name=args.ifile
 	output_file_name=args.ofile
 	cluster_file_name=args.clusters
@@ -56,12 +64,8 @@ def get_file_names():
 		input_file_path = Path(input_file_name)
 		output_file_name = input_file_path.with_suffix('.dat')
 
-	return (input_file_name, output_file_name, cluster_file_name)
+	only_largest = args.largest
 
-def process_file(input_file_name, output_file_name, cluster_file_name):
-	"""Open input file, make a copy, remove unnecessary lines, process data,
-	write to output file
-	"""
 	# Copy input file to a temporary file which will be modified
 	# (modifications: remove lines and columns with irrelevant comments and data)
 
@@ -96,6 +100,9 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 		# Retain information on filament id and cluster id only
 		cluster_temp_dataframe = pd.read_csv(cluster_temp_file_name,delim_whitespace=True)[['cluster','identity']]
 
+		if only_largest:
+			largest_cluster_id = cluster_temp_dataframe['cluster'].value_counts().idxmax()
+
 		# merge cluster id information into full dataframe
 		# https://stackoverflow.com/a/65450775
 		temp_dataframe = temp_dataframe.merge(cluster_temp_dataframe, on='identity')
@@ -113,13 +120,21 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 	# iterate over filament id and sum tensions
 	for fil_id, df_filament in temp_dataframe.groupby('identity'):
 		total_tension=df_filament['tension'].sum()
+		cluster_id = df_filament['cluster'].values[0]
 
 		if cluster_file_name:
-			new_df = pd.DataFrame([[fil_id,total_tension,df_filament['cluster'].values[0]]], columns=['identity','tension','cluster'])
+			if only_largest:
+				if cluster_id == largest_cluster_id:
+					new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
+					output_df =pd.concat([output_df, new_df], ignore_index=True)
+			else:
+				new_df = pd.DataFrame([[fil_id,total_tension,cluster_id]], columns=['identity','tension','cluster'])
+				output_df =pd.concat([output_df, new_df], ignore_index=True)
 		else:
 			new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
+			output_df =pd.concat([output_df, new_df], ignore_index=True)
 
-		output_df =pd.concat([output_df, new_df], ignore_index=True)
+
 
 	# Write to output file
 	output_file_path = Path(output_file_name)
@@ -135,9 +150,12 @@ def process_file(input_file_name, output_file_name, cluster_file_name):
 def main(argv):
 
 	# Get file name(s) from command line arguments
-	(input_file_name, output_file_name, cluster_file_name) = get_file_names()
+	args = get_args()
+
 	# Do the calculations and output results to file
-	process_file(input_file_name, output_file_name, cluster_file_name)
+
+
+	process_file(args)
 
 if __name__ == "__main__":
 	# Performance profiling code
