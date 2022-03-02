@@ -41,8 +41,8 @@ def get_args():
 	parser.add_argument('--ifile', '-i', type=str, help='')
 	parser.add_argument('--ofile', '-o', type=str, help='')
 	# https://stackoverflow.com/a/31347222
-	parser.add_argument('--xdir', '-x', default=False, action=argparse.BooleanOptionalAction, help='calculate sum of forces in x direction')
-	parser.add_argument('--ydir', '-y', default=False, action=argparse.BooleanOptionalAction, help='calculate sum of forces in y direction')
+	parser.add_argument('--xdir', '-x', action='store_true', help='calculate sum of forces in x direction')
+	parser.add_argument('--ydir', '-y', action='store_true', help='calculate sum of forces in y direction')
 
 	args = parser.parse_args()
 
