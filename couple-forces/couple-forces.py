@@ -1,16 +1,13 @@
 #!/usr/bin/python
 """Usage:
-python /path/to/axial-tensions.py -i forces.txt
+python /path/to/axial-tensions.py -i link_cluster.txt
 
-The forces.txt file is generated using a custom Cytosim report function:
-report2 fiber:forces
+The link_cluster.txt file is generated using a custom Cytosim report function:
+report2 couple:link_cluster
 
 i.e.:
 
 singularity exec /path/to/cytosim_sandbox.sif /home/cytosim/bin/report2 fiber:forces frame=1000 > forces.txt
-
-For cluster data:
-report2 fiber:cluster_fiber_position
 
 Make sure the report is generated for the last frame only (not for all frames)
 
@@ -37,15 +34,13 @@ def get_args():
 
 	input_file_name = ''
 	output_file_name = ''
-	cluster_file_name = ''
 
 	parser = argparse.ArgumentParser(description='')
 
 	parser.add_argument('--ifile', '-i', type=str, help='')
 	parser.add_argument('--ofile', '-o', type=str, help='')
-	parser.add_argument('--clusters', '-c', type=str, help='')
 	# https://stackoverflow.com/a/31347222
-	parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate tensions for filaments beloning to the largest cluster, ignore all other filaments')
+	parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate forces exerted by couples attached to filaments beloning to the largest cluster, ignore all other couples')
 
 	args = parser.parse_args()
 
@@ -57,7 +52,6 @@ def process_file(args):
 	"""
 	input_file_name=args.ifile
 	output_file_name=args.ofile
-	cluster_file_name=args.clusters
 
 	# If outputfile name not provided, replace/add suffix '.dat' to input file name
 	if not output_file_name:
@@ -86,55 +80,62 @@ def process_file(args):
 	# Read the whitespace-delimited data file that is output by Cytosim
 	temp_dataframe = pd.read_csv(temp_file_name, delim_whitespace=True)
 
-	# If cluster data file was provided, add cluster data to dataframe
-	if cluster_file_name:
-		cluster_file_path = Path(cluster_file_name)
-		cluster_temp_file_name = cluster_file_path.with_suffix('.tmp')
-		cluster_temp_file_path = Path(cluster_temp_file_name)
-
-		with open(cluster_file_name) as cluster_file, open(cluster_temp_file_name,'w') as temp_file:
-				for line in cluster_file:
-					if not (line.isspace() or ("%" in line and (not "fiber_id" in line))):
-						temp_file.write(line.replace("%","").replace("fiber_id","identity"))
-
-		# Retain information on filament id and cluster id only
-		cluster_temp_dataframe = pd.read_csv(cluster_temp_file_name,delim_whitespace=True)[['cluster','identity']]
-
-		if only_largest:
-			largest_cluster_id = cluster_temp_dataframe['cluster'].value_counts().idxmax()
-
-		# merge cluster id information into full dataframe
-		# https://stackoverflow.com/a/65450775
-		temp_dataframe = temp_dataframe.merge(cluster_temp_dataframe, on='identity')
-
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
 	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
 
 	# Define output dataframe
-	if cluster_file_name:
-		output_df = pd.DataFrame(columns=['identity', 'tension', 'cluster'])
-	else:
-		output_df = pd.DataFrame(columns=['identity', 'tension'])
 
-	# iterate over filament id and sum tensions
-	for fil_id, df_filament in temp_dataframe.groupby('identity'):
-		total_tension=df_filament['tension'].sum()
-		cluster_id = df_filament['cluster'].values[0]
+	output_df = pd.DataFrame(columns=['identity', 'cluster', 'x_force', 'y_force'])
 
-		if cluster_file_name:
-			if only_largest:
-				if cluster_id == largest_cluster_id:
-					new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
-					output_df =pd.concat([output_df, new_df], ignore_index=True)
-			else:
-				new_df = pd.DataFrame([[fil_id,total_tension,cluster_id]], columns=['identity','tension','cluster'])
-				output_df =pd.concat([output_df, new_df], ignore_index=True)
+	largest_cluster_id = temp_dataframe['cluster'].mode().values[0]
+
+	x_force_sum = 0
+	y_force_sum = 0
+
+	# iterate over cluster id and find x and y components of force vector
+	for couple_id, df_couple in temp_dataframe.groupby('identity'):
+		dir_vec = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
+						  	  df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
+
+		angle=np.arctan2(dir_vec[1],dir_vec[0])
+
+		x_force = np.cos(angle)*df_couple['force'].values[0]
+		y_force = np.sin(angle)*df_couple['force'].values[0]
+
+		cluster_id = df_couple['cluster'].values[0]
+
+		if only_largest:
+			if cluster_id == largest_cluster_id:
+				new_df = pd.DataFrame([[couple_id,cluster_id, x_force, y_force]],\
+									  columns=['identity', 'cluster', 'x_force', 'y_force'])
+				output_df = pd.concat([output_df, new_df], ignore_index=True)
+
+				x_force_sum += x_force
+				y_force_sum += y_force
 		else:
-			new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
-			output_df =pd.concat([output_df, new_df], ignore_index=True)
+			new_df = pd.DataFrame([[couple_id,cluster_id, x_force, y_force]],\
+								  columns=['identity', 'cluster', 'x_force', 'y_force'])
+			output_df = pd.concat([output_df, new_df], ignore_index=True)
 
+		# total_tension=df_filament['tension'].sum()
+		# cluster_id = df_filament['cluster'].values[0]
+		#
+		# if cluster_file_name:
+		# 	if only_largest:
+		# 		if cluster_id == largest_cluster_id:
+		# 			new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
+		# 			output_df =pd.concat([output_df, new_df], ignore_index=True)
+		# 	else:
+		# 		new_df = pd.DataFrame([[fil_id,total_tension,cluster_id]], columns=['identity','tension','cluster'])
+		# 		output_df =pd.concat([output_df, new_df], ignore_index=True)
+		# else:
+		# 	new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
+		# 	output_df =pd.concat([output_df, new_df], ignore_index=True)
 
+	force_sum_mag = np.sqrt(x_force_sum**2 + y_force_sum**2)
+
+	print(x_force_sum, y_force_sum, np.degrees(np.arctan2(y_force_sum, x_force_sum)), force_sum_mag)
 
 	# Write to output file
 	output_file_path = Path(output_file_name)
@@ -142,8 +143,6 @@ def process_file(args):
 
 	try:
 		os.remove(temp_file_path)
-		if cluster_file_name:
-			os.remove(cluster_temp_file_path)
 	except OSError as e:  ## if failed, report it back to the user ##
 		print ("Error: %s - %s." % (e.filename, e.strerror))
 
