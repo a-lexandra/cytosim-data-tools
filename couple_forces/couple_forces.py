@@ -29,7 +29,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 import numpy as np
 
-def get_args():
+def get_args(argv):
 	"""Parse the command line input flags and arguments"""
 
 	input_file_name = ''
@@ -42,7 +42,7 @@ def get_args():
 	# https://stackoverflow.com/a/31347222
 	parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate forces exerted by couples attached to filaments beloning to the largest cluster, ignore all other couples')
 
-	args = parser.parse_args()
+	args = parser.parse_args(argv)
 
 	return args
 
@@ -50,6 +50,7 @@ def process_file(args):
 	"""Open input file, make a copy, remove unnecessary lines, process data,
 	write to output file
 	"""
+
 	input_file_name=args.ifile
 	output_file_name=args.ofile
 
@@ -149,7 +150,7 @@ def process_file(args):
 def main(argv):
 
 	# Get file name(s) from command line arguments
-	args = get_args()
+	args = get_args(argv)
 
 	# Do the calculations and output results to file
 
