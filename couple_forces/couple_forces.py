@@ -29,6 +29,8 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 import numpy as np
 
+import pytest
+
 def get_args(argv):
 	"""Parse the command line input flags and arguments"""
 
@@ -46,104 +48,200 @@ def get_args(argv):
 
 	return args
 
-def process_file(args):
-	"""Open input file, make a copy, remove unnecessary lines, process data,
-	write to output file
-	"""
+def get_file_paths(args):
+	"""Generate the paths for the file names provided by args
 
+	Return: file names + paths? as a dict?
+	"""
 	input_file_name=args.ifile
 	output_file_name=args.ofile
 
 	# If outputfile name not provided, replace/add suffix '.dat' to input file name
 	if not output_file_name:
-		input_file_path = Path(input_file_name)
-		output_file_name = input_file_path.with_suffix('.dat')
-
-	only_largest = args.largest
+		input_file_path  = Path(input_file_name)
+		output_file_path = input_file_path.with_suffix('.dat')
+		output_file_name = output_file_path.name
+	else:
+		output_file_path = Path(output_file_name)
 
 	# Copy input file to a temporary file which will be modified
 	# (modifications: remove lines and columns with irrelevant comments and data)
 
 	input_file_path = Path(input_file_name)
-	temp_file_name = input_file_path.with_suffix('.tmp')
+	temp_file_name = input_file_path.with_suffix('.tmp').name
 	temp_file_path = Path(temp_file_name)
 
-	### Pre-process input data in temp file ###
+	input_dict = {"name": input_file_name, "path": input_file_path}
+	output_dict = {"name": output_file_name, "path": output_file_path}
+	temp_dict = {"name": temp_file_name, "path": temp_file_path}
+
+	file_dict = {"input": input_dict, "output": output_dict, "temp": temp_dict}
+
+	return file_dict
+
+def preprocess_file(file_dict):
+	"""Pre-process input data to remove extraneous (non-data or non-column
+	header) lines.
+
+	Returns: Pandas dataframe
+	"""
 
 	# Remove blank lines and lines with % (Cytosim comments)
 	# BUT Keep line with column headers
 	# https://stackoverflow.com/a/11969474 , https://stackoverflow.com/a/2369538
-	with open(input_file_name) as input_file, open(temp_file_name, 'w') as temp_file:
+	with open(file_dict["input"]["path"]) as input_file, \
+		 open(file_dict["temp"]["path"], 'w') as temp_file:
 		for line in input_file:
 			if not (line.isspace() or ("%" in line and (not "identity" in line))):
 				temp_file.write(line.replace("%",""))
 
 	# Read the whitespace-delimited data file that is output by Cytosim
-	temp_dataframe = pd.read_csv(temp_file_name, delim_whitespace=True)
+	temp_dataframe = pd.read_csv(file_dict["temp"]["path"], delim_whitespace=True)
+
+	# Check that data from only one simulation frame was loaded
+	if temp_dataframe["identity"].isin(["identity"]).any():
+		raise ValueError("Data for more than one frame loaded.")
 
 	# Update the temp file, mostly for debugging.
 	# File not used for calculations, calcs done with the dataframe object
-	temp_dataframe.to_csv(temp_file_name, sep="\t", index=None)
+	temp_dataframe.to_csv(file_dict["temp"]["path"], sep="\t", index=None)
+
+	return temp_dataframe
+
+def write_to_dataframe(output_df, couple_id, cluster_id, \
+					   x1_force, y1_force, x2_force, y2_force, \
+					   x1_force_sum, y1_force_sum, x2_force_sum, y2_force_sum):
+
+	new_df1 = pd.DataFrame([[ couple_id, cluster_id, \
+							  x1_force, y1_force ]],\
+						      columns=[ 'identity', 'cluster',\
+							   			'x1_force', 'y1_force' ])
+
+	new_df2 = pd.DataFrame([[ couple_id, cluster_id, \
+							  x2_force, y2_force ]],\
+						  	  columns=[ 'identity', 'cluster', \
+							  			'x2_force', 'y2_force' ])
+
+	new_df_both = new_df1.merge(new_df2, on=["identity","cluster"])
+
+	output_df = pd.concat([output_df, new_df_both], ignore_index=True)
+
+	x1_force_sum += x1_force
+	y1_force_sum += y1_force
+
+	x2_force_sum += x2_force
+	y2_force_sum += y2_force
+
+	return (output_df, x1_force_sum, y1_force_sum, \
+					   x2_force_sum, y2_force_sum )
+
+def calc_force_vec(args, temp_dataframe):
+	"""Open input file, make a copy, remove unnecessary lines, process data,
+	write to output file
+
+	Returns: Pandas dataframe
+	"""
+	only_largest = args.largest
 
 	# Define output dataframe
 
-	output_df = pd.DataFrame(columns=['identity', 'cluster', 'x_force', 'y_force'])
+	output_df = pd.DataFrame(columns=['identity', 'cluster', \
+									  'x1_force', 'y1_force', \
+									  'x2_force', 'y2_force'] )
 
 	largest_cluster_id = temp_dataframe['cluster'].mode().values[0]
 
-	x_force_sum = 0
-	y_force_sum = 0
+	x1_force_sum = 0
+	y1_force_sum = 0
+
+	x2_force_sum = 0
+	y2_force_sum = 0
 
 	# iterate over cluster id and find x and y components of force vector
 	for couple_id, df_couple in temp_dataframe.groupby('identity'):
-		dir_vec = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
-						  	  df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
+		dir_vec1 = np.array( [ df_couple['pos2X'] - df_couple['pos1X'] , \
+						  	   df_couple['pos2Y'] - df_couple['pos1Y'] ] ).flatten()
 
-		angle=np.arctan2(dir_vec[1],dir_vec[0])
+		dir_vec2 = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
+						  	   df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
 
-		x_force = np.cos(angle)*df_couple['force'].values[0]
-		y_force = np.sin(angle)*df_couple['force'].values[0]
+		f_vec1 = df_couple["force"].values[0]*dir_vec1 / np.linalg.norm(dir_vec1)
+		f_vec2 = df_couple["force"].values[0]*dir_vec2 / np.linalg.norm(dir_vec2)
+
+		breakpoint()
+
+def calculate_force_components(args, temp_dataframe):
+	"""Open input file, make a copy, remove unnecessary lines, process data,
+	write to output file
+
+	Returns: Pandas dataframe
+	"""
+	only_largest = args.largest
+
+	# Define output dataframe
+
+	output_df = pd.DataFrame(columns=['identity', 'cluster', \
+									  'x1_force', 'y1_force', \
+									  'x2_force', 'y2_force'] )
+
+	largest_cluster_id = temp_dataframe['cluster'].mode().values[0]
+
+	x1_force_sum = 0
+	y1_force_sum = 0
+
+	x2_force_sum = 0
+	y2_force_sum = 0
+
+	# iterate over cluster id and find x and y components of force vector
+	for couple_id, df_couple in temp_dataframe.groupby('identity'):
+		dir_vec1 = np.array( [ df_couple['pos2X'] - df_couple['pos1X'] , \
+						  	   df_couple['pos2Y'] - df_couple['pos1Y'] ] ).flatten()
+
+		dir_vec2 = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
+						  	   df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
+
+		angle1 = np.arctan2(dir_vec1[1], dir_vec1[0])
+		angle2 = np.arctan2(dir_vec2[1], dir_vec2[0])
+
+		x1_force = np.cos(angle1)*df_couple['force'].values[0]
+		y1_force = np.sin(angle1)*df_couple['force'].values[0]
+
+		x2_force = np.cos(angle2)*df_couple['force'].values[0]
+		y2_force = np.sin(angle2)*df_couple['force'].values[0]
 
 		cluster_id = df_couple['cluster'].values[0]
 
 		if only_largest:
 			if cluster_id == largest_cluster_id:
-				new_df = pd.DataFrame([[couple_id,cluster_id, x_force, y_force]],\
-									  columns=['identity', 'cluster', 'x_force', 'y_force'])
-				output_df = pd.concat([output_df, new_df], ignore_index=True)
-
-				x_force_sum += x_force
-				y_force_sum += y_force
+				(output_df, x1_force_sum, y1_force_sum,  \
+							x2_force_sum, y2_force_sum ) \
+						  = write_to_dataframe(output_df, couple_id, cluster_id, \
+											   x1_force, y1_force, \
+											   x2_force, y2_force, \
+											   x1_force_sum, y1_force_sum, \
+											   x2_force_sum, y2_force_sum)
 		else:
-			new_df = pd.DataFrame([[couple_id,cluster_id, x_force, y_force]],\
-								  columns=['identity', 'cluster', 'x_force', 'y_force'])
-			output_df = pd.concat([output_df, new_df], ignore_index=True)
+			(output_df, x1_force_sum, y1_force_sum,  \
+						x2_force_sum, y2_force_sum ) \
+					  = write_to_dataframe(output_df, couple_id, cluster_id, \
+										   x1_force, y1_force, \
+										   x2_force, y2_force, \
+										   x1_force_sum, y1_force_sum, \
+										   x2_force_sum, y2_force_sum)
 
-		# total_tension=df_filament['tension'].sum()
-		# cluster_id = df_filament['cluster'].values[0]
-		#
-		# if cluster_file_name:
-		# 	if only_largest:
-		# 		if cluster_id == largest_cluster_id:
-		# 			new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
-		# 			output_df =pd.concat([output_df, new_df], ignore_index=True)
-		# 	else:
-		# 		new_df = pd.DataFrame([[fil_id,total_tension,cluster_id]], columns=['identity','tension','cluster'])
-		# 		output_df =pd.concat([output_df, new_df], ignore_index=True)
-		# else:
-		# 	new_df = pd.DataFrame([[fil_id,total_tension]], columns=['identity','tension'])
-		# 	output_df =pd.concat([output_df, new_df], ignore_index=True)
+	breakpoint()
 
-	force_sum_mag = np.sqrt(x_force_sum**2 + y_force_sum**2)
+	return output_df
 
-	print(x_force_sum, y_force_sum, np.degrees(np.arctan2(y_force_sum, x_force_sum)), force_sum_mag)
-
+def write_output_file(file_dict, output_df):
 	# Write to output file
 	output_file_path = Path(output_file_name)
 	output_df.to_csv(output_file_path, float_format='%.3f', header=False, index=None, sep="\t")
 
+def delete_temp_file(file_dict):
+
 	try:
-		os.remove(temp_file_path)
+		os.remove(file_dict["temp"]["path"])
 	except OSError as e:  ## if failed, report it back to the user ##
 		print ("Error: %s - %s." % (e.filename, e.strerror))
 
@@ -154,11 +252,7 @@ def main(argv):
 
 	# Do the calculations and output results to file
 
-
 	process_file(args)
 
 if __name__ == "__main__":
-	# Performance profiling code
-	#import timeit
-	#print(timeit.repeat('main(sys.argv[1:])', setup="from __main__ import main",number=1,repeat=10))
 	main(sys.argv[1:])
