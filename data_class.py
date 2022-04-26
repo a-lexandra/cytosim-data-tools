@@ -37,7 +37,7 @@ class Data():
 		self.column_list = column_list
 		self.preprocess_file()
 
-		
+		self.column_list = column_list
 		self.get_relevant_columns(self.column_list)
 
 		self.output_df = pd.DataFrame()
