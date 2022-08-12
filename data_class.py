@@ -26,10 +26,10 @@ class Data():
 		# 		(len(argv) < 2):
 		# 	raise ValueError("No input file specified")
 
-		if argv != sys.argv[1:]:
-			os.chdir(sys.path[0])
-
+		self.parser = argparse.ArgumentParser(description='')
 		self.get_args(argv)
+		self.args = self.parser.parse_args(argv)
+
 		self.file_dict = {}
 		self.get_file_paths()
 
@@ -51,17 +51,18 @@ class Data():
 	def get_args(self, argv):
 		"""Parse the command line input flags and arguments"""
 
+		if argv != sys.argv[1:]:
+			os.chdir(sys.path[0])
+
 		input_file_name = ''
 		output_file_name = ''
-
-		self.parser = argparse.ArgumentParser(description='')
 
 		self.parser.add_argument('--ifile', '-i', type=str, help='')
 		self.parser.add_argument('--ofile', '-o', type=str, help='')
 		# https://stackoverflow.com/a/31347222
 		self.parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate forces exerted by couples attached to filaments beloning to the largest cluster, ignore all other couples')
 
-		self.args = self.parser.parse_args(argv)
+		
 
 	def get_file_paths(self):
 		"""Generate the paths for the file names provided by args
