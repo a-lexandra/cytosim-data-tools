@@ -34,9 +34,10 @@ class Data():
 		self.get_file_paths()
 
 		self.temp_dataframe = pd.DataFrame()
+		self.column_list = column_list
 		self.preprocess_file()
 
-		self.column_list = column_list
+		
 		self.get_relevant_columns(self.column_list)
 
 		self.output_df = pd.DataFrame()
@@ -106,14 +107,14 @@ class Data():
 		with open(self.file_dict["input"]["path"]) as input_file, \
 			 open(self.file_dict["temp"]["path"], 'w') as temp_file:
 			for line in input_file:
-				if not (line.isspace() or ("%" in line and (not "identity" in line))):
+				if not (line.isspace() or ("%" in line and (not self.column_list[-1] in line))):
 					temp_file.write(line.replace("%",""))
 
 		# Read the whitespace-delimited data file that is output by Cytosim
 		self.temp_dataframe = pd.read_csv(self.file_dict["temp"]["path"], delim_whitespace=True)
 
 		# Check that data from only one simulation frame was loaded
-		if self.temp_dataframe["identity"].isin(["identity"]).any():
+		if self.temp_dataframe[self.column_list[-1]].isin([self.column_list[-1]]).any():
 			raise ValueError("Data for more than one frame loaded.")
 
 		self.write_temp_dataframe()
