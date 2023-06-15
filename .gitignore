@@ -1,5 +1,6 @@
 # Extra stuff specific to this project
 *.tmp
+links.txt
 sample_trajectories/pulling/
 sample_trajectories/no_pulling/
 
