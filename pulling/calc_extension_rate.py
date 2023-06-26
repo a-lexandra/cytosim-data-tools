@@ -3,51 +3,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp
 
-start_from_head_bool = True
-
-
 rad_gyr_arr = np.loadtxt('rad_gyr.dat', usecols=(1,4))
 
 num_pts = rad_gyr_arr.shape[0]
 
-rsq_list = []
+window_size = 50
 
-# linear relaxation - not always not true
-if start_from_head_bool:
-    for idx in range(50,num_pts):
-        t = rad_gyr_arr[0:idx,0]
-        rg = rad_gyr_arr[0:idx,1]
+slope_list = []
 
-        p = sp.stats.linregress(t, rg)
+for start_idx in range(num_pts-window_size):
+    end_idx = start_idx + window_size
+    t = rad_gyr_arr[start_idx:end_idx,0]
+    rg = rad_gyr_arr[start_idx:end_idx,1]
 
-        rsq_list.append([t[-1],p.rvalue**2])
-else:
-    for idx in range(0,num_pts-50):
-        t = rad_gyr_arr[idx:-1,0]
-        rg = rad_gyr_arr[idx:-1,1]
+    p = sp.stats.linregress(t, rg)
 
-        p = sp.stats.linregress(t,rg)
-
-        rsq_list.append([t[0], p.rvalue**2])
+    slope_list.append([t[0],p.slope])
 
 
 t = rad_gyr_arr[:,0]
 rg = rad_gyr_arr[:,1]
 
-rsq_arr = np.array(rsq_list)
+slope_arr = np.array(slope_list)
 
-peak_idx = np.argmax(rsq_arr[:,1])
-peak_t   = rsq_arr[peak_idx, 0]
-peak_rsq = rsq_arr[peak_idx, 1]
+zero_idx = np.argmax(slope_arr[:,1]>0)
+zero_t   = slope_arr[zero_idx, 0]
 
-fig, ax1 = plt.subplots()
-ax2 = ax1.twinx()
+relax_time = zero_t - slope_arr[0,0]
 
-ax1.scatter(t, rg)
-ax2.plot(rsq_arr[:,0], rsq_arr[:,1],color='red')
-ax1.axvline(peak_t,color='green')
-plt.show()
+with open('relax_time.txt', 'w') as f:
+    f.write(str(relax_time))
 
+plot_bool = False
 
+if plot_bool:
 
-print(peak_idx, peak_t, peak_rsq)
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+
+    ax1.scatter(t, rg)
+    ax2.plot(slope_arr[:,0], slope_arr[:,1],color='red')
+    ax2.axhline(0,color='green')
+    ax2.axvline(zero_t,color='green')
+    plt.show()
