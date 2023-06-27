@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp
+from scipy import stats
 
 rad_gyr_arr = np.loadtxt('rad_gyr.dat', usecols=(1,4))
 
@@ -32,7 +33,7 @@ zero_t   = slope_arr[zero_idx, 0]
 relax_time = zero_t - slope_arr[0,0]
 
 with open('relax_time.txt', 'w') as f:
-    f.write(str(relax_time))
+    f.write(str(relax_time)+'\n')
 
 plot_bool = False
 
