@@ -42,8 +42,11 @@ if plot_bool:
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
 
+    ax1.set_xlabel("time (s)")
     ax1.scatter(t, rg)
-    ax2.plot(slope_arr[:,0], slope_arr[:,1],color='red')
+    ax1.set_ylabel("R_g")
+    ax2.scatter(slope_arr[:,0], slope_arr[:,1],color='red')
+    ax2.set_ylabel("linear fit slope")
     ax2.axhline(0,color='green')
     ax2.axvline(zero_t,color='green')
     plt.show()
