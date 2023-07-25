@@ -2,9 +2,8 @@ from data_class import Data
 import pandas as pd
 
 class Cluster(Data):
-	def __init__(self):
-		super().__init__()
-
+	def __init__(self, column_list=[]):
+		super().__init__(column_list=column_list)
 		if (self.args.largest == True) and ('cluster' in self.temp_dataframe.columns) :
 			self.largest_cluster_id = self.get_largest_cluster_id() ;
 			self.get_largest_cluster_data()
@@ -21,7 +20,8 @@ class Cluster(Data):
 		self.ratio_parallel_fils = self.num_parallel_fils / self.num_unique_fil_pairs
 		self.ratio_antiparallel_fils = self.num_antiparallel_fils / self.num_unique_fil_pairs
 
-		output = {'N_f':		self.total_num_fils, \
+		output = {'time':		 self.time, \
+				  'N_f':		self.total_num_fils, \
 				  'N_c':		self.total_num_couples, \
 				  'N_c:N_f':	self.ratio_couples_to_fils, \
 				  'N_pc':		self.num_parallel_fil_pairs, \
@@ -38,7 +38,7 @@ class Cluster(Data):
 
 		self.write_output_file()
 
-		self.delete_temp_file()
+		#self.delete_temp_file()
 
 
 	def get_largest_cluster_id(self):
@@ -98,7 +98,8 @@ class Cluster(Data):
 		self.ratio_parallel_fils = self.num_parallel_fils / self.num_unique_fil_pairs
 		self.ratio_antiparallel_fils = self.num_antiparallel_fils / self.num_unique_fil_pairs
 
-		output = {'Nf':		self.total_num_fils, \
+		output = {'time':		 self.time, \
+				  'Nf':		self.total_num_fils, \
 				  'Nc':		self.total_num_couples, \
 				  'Rcf':	self.ratio_couples_to_fils, \
 				  'Npc':		self.num_parallel_fil_pairs, \

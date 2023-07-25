@@ -8,18 +8,18 @@ rad_gyr_arr = np.loadtxt('rad_gyr.dat', usecols=(1,4))
 
 num_pts = rad_gyr_arr.shape[0]
 
-window_size = 15
-
+window_size = 150
+start_pt = window_size//5 
 slope_list = []
 
-for start_idx in range(0,num_pts-window_size-1,window_size):
+for start_idx in range(start_pt,num_pts-window_size-start_pt-1,window_size):
     end_idx = start_idx + window_size
     t = rad_gyr_arr[start_idx:end_idx,0]
     rg = rad_gyr_arr[start_idx:end_idx,1]
 
     p = sp.stats.linregress(t, rg)
-
-    slope_list.append([t[0],p.slope])
+    
+    slope_list.append([t[0],p.slope,p.stderr])
 
 
 t = rad_gyr_arr[:,0]
@@ -44,8 +44,7 @@ if plot_bool:
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
 
+    ax1.set_xlabel("time (s)")
     ax1.scatter(t, rg)
     ax2.plot(slope_arr[:,0], slope_arr[:,1],color='red')
-    #ax2.axhline(0,color='green')
-    #ax2.axvline(zero_t,color='green')
     plt.savefig("relax_time.png")

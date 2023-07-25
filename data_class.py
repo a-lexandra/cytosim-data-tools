@@ -35,13 +35,12 @@ class Data():
 
 		self.temp_dataframe = pd.DataFrame()
 		self.column_list = column_list
+		self.time = None # set by preprocess_file()
 		self.preprocess_file()
 
-		self.column_list = column_list
 		self.get_relevant_columns(self.column_list)
 
 		self.output_df = pd.DataFrame()
-
 		if (self.args.largest == True) and ('cluster' in self.temp_dataframe.columns) :
 			self.largest_cluster_id = self.get_largest_cluster_id() ;
 			self.get_largest_cluster_data()
@@ -100,21 +99,20 @@ class Data():
 
 		Returns: Pandas dataframe
 		"""
-
 		# Remove blank lines and lines with % (Cytosim comments)
 		# BUT Keep line with column headers
 		# https://stackoverflow.com/a/11969474 , https://stackoverflow.com/a/2369538
 		with open(self.file_dict["input"]["path"]) as input_file, \
 			 open(self.file_dict["temp"]["path"], 'w') as temp_file:
 			for line in input_file:
-				if not (line.isspace() or ("%" in line and (not self.column_list[-1] in line))):
+				if not (line.isspace() or ("%" in line and (not self.column_list[-2] in line))):
 					temp_file.write(line.replace("%",""))
-
+				if "time" in line:
+					self.time=float(line.split(' ')[-1])
 		# Read the whitespace-delimited data file that is output by Cytosim
 		self.temp_dataframe = pd.read_csv(self.file_dict["temp"]["path"], delim_whitespace=True)
-
 		# Check that data from only one simulation frame was loaded
-		if self.temp_dataframe[self.column_list[-1]].isin([self.column_list[-1]]).any():
+		if self.temp_dataframe[self.column_list[-2]].isin([self.column_list[-2]]).any():
 			raise ValueError("Data for more than one frame loaded.")
 
 		self.write_temp_dataframe()
@@ -139,7 +137,7 @@ class Data():
 
 	def write_output_file(self):
 		# Write to output file
-		self.output_df.to_csv(self.file_dict["output"]["path"], float_format='%.8f', header=True, index=None, sep="\t")
+		self.output_df.to_csv(self.file_dict["output"]["path"], float_format='%.8f', header=False, index=None, sep="\t")
 
 	def delete_temp_file(self):
 		try:
