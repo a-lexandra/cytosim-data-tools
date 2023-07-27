@@ -4,26 +4,28 @@ import pytest
 import os
 import sys
 import re
+import pathlib
+from pathlib import Paths
 
-def test_init():
-    mySimulation = Simulation(argv=['--prefixframe', 'report', \
-                                    '--suffixframe', '', \
-                                    '--extframe', 'txt', \
-                                    '--ifilesimulation', 'forces.dat' \
-                                    ])
+@pytest.fixture
+def mySimulation():
+    return Simulation(argv=['--prefixframe', 'report', \
+                            '--suffixframe', 'fr', \
+                            '--extframe', 'txt', \
+                            '--ifilesimulation', 'forces.dat', \
+                            '--ifilecolnames', 'forces.cols' \
+                            ])
 
-def test_get_args():
-    mySimulation = Simulation(argv=['--prefixframe', 'report', \
-                                    '--suffixframe', 'frame', \
-                                    '--extframe', '.txt', \
-                                    '--ifilesimulation', 'forces.dat' \
-                                    ])
-
+def test_get_args(mySimulation):
     assert type(mySimulation.args.prefixframe) == str
-    assert mySimulation.args.prefixframe.isalpha()
+    
+    if len(mySimulation.args.prefixframe) > 0:
+        assert mySimulation.args.prefixframe.isalpha()
     
     assert type(mySimulation.args.suffixframe) == str
-    assert mySimulation.args.suffixframe.isalpha()
+    
+    if len(mySimulation.args.suffixframe)> 0:
+        assert mySimulation.args.suffixframe.isalpha()
 
     # Either prefix or suffix string len must be nonzero
     assert (len(mySimulation.args.prefixframe) > 0 or 
@@ -50,25 +52,48 @@ def test_get_args():
 
     # Check valid format of filename
     # Use raw string for regex search
-    m = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ifilesimulation)
-    assert m 
+    m_fname_sim = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ifilesimulation)
+    assert m_fname_sim
 
-def test_get_frame_filename_pattern():
-    mySimulation = Simulation(argv=['--prefixframe', 'report', \
-                                    '--suffixframe', '', \
-                                    '--extframe', '.txt', \
-                                    '--ifilesimulation', 'forces.dat' \
-                                    ])
+    assert type(mySimulation.args.ifilecolnames) == str
+    
+    if len(mySimulation.args.ifilecolnames) > 0:
+        m_fname_cols = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ifilecolnames)
+        assert m_fname_cols
 
+@pytest.fixture
+def mySimulation():
+    os.chdir(Path(sys.path[0]).joinpath("tests/test_data/keff_pulling/sf"))
 
-    pass
+    return Simulation(argv=['--prefixframe', 'report', \
+                            '--suffixframe', '', \
+                            '--extframe', 'txt', \
+                            '--ifilesimulation', 'forces.dat', \
+                            '--ifilecolnames', 'forces.cols' \
+                            ])
 
-def test_load_simulation_data():
-    pass
+def test_get_frame_filename_pattern(mySimulation):
+    assert re.compile(mySimulation.frame_fname_search_pattern)
 
-def test_get_frame_filepaths():
-    os.chdir(sys.path[0])
-    pass
+def test_load_simulation_data(mySimulation):
+    os.chdir(Path(sys.path[0]).joinpath("tests/test_data/keff_pulling/sf"))
+
+    # breakpoint()
+    if len(mySimulation.args.ifilecolnames) > 0:
+        assert os.path.isfile(mySimulation.simulation_file_path)
+        assert os.stat(mySimulation.simulation_file_path).st_size > 0
+    
+
+def test_get_frame_filepaths(mySimulation):
+    os.chdir(Path(sys.path[0]).joinpath("tests/test_data/keff_pulling/sf/"))
+
+    assert len(mySimulation.frame_filepath_list) > 0
+
+    for path in mySimulation.frame_filepath_list:
+        assert type(path) == pathlib.PosixPath
+        assert os.path.isfile(path)
+        assert os.stat(path).st_size > 0
+
 
 def test_load_frame_data():
     pass
