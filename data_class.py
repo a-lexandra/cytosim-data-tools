@@ -12,6 +12,8 @@ import pandas as pd # for processing data file
 
 import pytest
 
+from pathlib import Path
+
 class RuntimeArgumentError(ValueError):
 	pass
 
@@ -26,6 +28,7 @@ class Data():
 		# 		(len(argv) < 2):
 		# 	raise ValueError("No input file specified")
 
+		self.cwd = Path.cwd()
 		self.parser = argparse.ArgumentParser(description='')
 		self.get_args(argv)
 		self.args = self.parser.parse_args(argv)
@@ -52,7 +55,7 @@ class Data():
 		"""Parse the command line input flags and arguments"""
 
 		if argv != sys.argv[1:]:
-			os.chdir(sys.path[0])
+			os.chdir(self.cwd)
 
 		input_file_name = ''
 		output_file_name = ''
@@ -140,7 +143,8 @@ class Data():
 		self.output_df.to_csv(self.file_dict["output"]["path"], float_format='%.8f', header=False, index=None, sep="\t")
 
 	def delete_temp_file(self):
-		try:
-			os.remove(self.file_dict["temp"]["path"])
-		except OSError as e:  ## if failed, report it back to the user ##
-			print ("Error: %s - %s." % (e.filename, e.strerror))
+		if os.path.isfile(self.file_dict["temp"]["path"]):
+			try:
+				os.remove(self.file_dict["temp"]["path"])
+			except OSError as e:  ## if failed, report it back to the user ##
+				print ("Error: %s - %s." % (e.filename, e.strerror))

@@ -1,11 +1,12 @@
 from simulation_class import Simulation
+from data_class import Data
 import argparse
 import pytest
 import os
 import sys
 import re
 import pathlib
-from pathlib import Paths
+from pathlib import Path
 
 @pytest.fixture
 def mySimulation():
@@ -94,9 +95,12 @@ def test_get_frame_filepaths(mySimulation):
         assert os.path.isfile(path)
         assert os.stat(path).st_size > 0
 
+def test_load_frame_data(mySimulation):
+    os.chdir(Path(sys.path[0]).joinpath("tests/test_data/keff_pulling/sf/"))
 
-def test_load_frame_data():
-    pass
+    assert type(mySimulation.frame_data_list) == list
 
-def test_process_frame_data():
-    pass
+    for frame in mySimulation.frame_data_list:
+        assert type(frame) == Data
+
+    assert len(mySimulation.frame_data_list) == len(mySimulation.frame_filepath_list)

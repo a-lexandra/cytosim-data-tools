@@ -10,6 +10,7 @@ from data_class import Data
 class Simulation():
     def __init__(self, argv=sys.argv[1:], column_list=['class', 'identity']):
         self.column_list = column_list
+
         self.cwd = Path.cwd()
         self.parser = argparse.ArgumentParser(description='')
         self.get_args(argv)
@@ -23,7 +24,6 @@ class Simulation():
 
         self.frame_filepath_list = self.get_frame_filepaths()
 
-        # TODO
         self.frame_data_list = self.load_frame_data()
         
     def __delete__(self):
@@ -31,7 +31,7 @@ class Simulation():
 
     def get_args(self, argv):
         if argv != sys.argv[1:]:
-            os.chdir(sys.path[0])
+            os.chdir(self.cwd)
 
         self.parser.add_argument('--prefixframe', '-p', type=str, default='', help='prefix for file pattern of frame-by-frame data files')
         self.parser.add_argument('--suffixframe', '-s', type=str, default='', help='suffix for file pattern of frame-by-frame data files')
@@ -92,19 +92,15 @@ class Simulation():
         return frame_filepath_list
 
     def load_frame_data(self):
-        # TODO
         frame_data_list = []
 
         for path in self.frame_filepath_list:
+            # breakpoint()
             frame = Data(argv=['--ifile', path.name], \
                          column_list=self.column_list)
             frame_data_list.append(frame)
                 
-
-    def process_frame_data(self):
-        # generic - get timestamp and loaded columns
-        pass
-
+        return frame_data_list
 
 if __name__=="__main__":
     column_list = ['identity', \
