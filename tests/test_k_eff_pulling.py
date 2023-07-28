@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 @pytest.fixture
 def mySimulation():
@@ -26,24 +27,41 @@ def mySimulation():
     return KeffData(argv=argv, column_list=column_list)
 
 def test_calculate_motor_states(mySimulation):
-    assert type(mySimulation.motor_data_list) == list
+    assert type(mySimulation.motor_df) == pd.DataFrame
 
-    for frame in mySimulation.motor_data_list:
-        assert type(frame) == dict
-        assert type(frame['time']) == float
-        assert type(frame['couple_data']) == list
-
-        for couple in frame['couple_data']:
-            assert type(couple) == dict
-
-            assert type(couple['dir']) == np.ndarray
-            assert couple['dir'].shape == (2,)
-
-            assert type(couple['force']) == np.ndarray
-            assert couple['force'].shape == (2,)
-
-            assert type(couple['length']) == float
-            assert type(couple['fil_id']) == int
+    for entry in mySimulation.motor_df['time']:
+        assert type(entry) == float
     
+    for entry in mySimulation.motor_df['dir']:
+        assert type(entry) == np.ndarray
+        assert entry.shape == (2,)
+
+    for entry in mySimulation.motor_df['force']:
+        assert type(entry) == np.ndarray
+        assert entry.shape == (2,)
+
+    for entry in mySimulation.motor_df['length']:
+        assert type(entry) == float
+
+    for entry in mySimulation.motor_df['fil_id']:
+        assert type(entry) == int
     
-        
+    for entry in mySimulation.motor_df['couple_id']:
+        assert type(entry) == int
+
+def test_calculate_k_eff(mySimulation):
+    assert type(mySimulation.motor_df) == pd.DataFrame
+
+    for entry in mySimulation.motor_df['f_net']:
+        assert type(entry) == np.ndarray
+        assert entry.shape == (2,)
+
+    for entry in mySimulation.motor_df['f_net_mag']:
+        assert type(entry) == float
+    
+    for entry in mySimulation.motor_df['n']:
+        assert type(entry) == int
+    
+    for entry in mySimulation.motor_df['k_eff']:
+        assert type(entry) == float
+    

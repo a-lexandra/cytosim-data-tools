@@ -8,45 +8,22 @@ class KeffData(Simulation):
     def __init__(self,argv=[], column_list=[]):
             super().__init__(argv=argv, column_list=column_list)
 
-            # instead of re-loading frame data, is there a way to re cast Data to CoupleForces
-            # CoupleForces is child class of Data
-            # Currently not using any methods of CoupleForces, need to rewrite them to be
-            # more universal
-            # self.frame_data_list = self.load_frame_data()
-
             # Need to round f_ext data to 3 decimal points (to match reportF data)
             self.f_ext_df = self.simulation_df.round({'time': 3})
 
-    
-
-            self.motor_data_list, self.motor_df = self.calculate_motor_states()
-
-            # self.fil_valency_list = self.calculate_fil_valency()
+            self.motor_df = self.calculate_motor_states()
 
             # appends columns with k_eff related data to self.motor_df
             self.calculate_k_eff()
-    def __delete(self):
+
+    def __delete__(self):
         pass
 
-    # def load_frame_data(self):
-    #     frame_data_list = []
-
-    #     for path in self.frame_filepath_list:
-    #         # breakpoint()
-    #         frame = CoupleForces(argv=['--ifile', path.name], \
-    #                      column_list=self.column_list)
-    #         frame_data_list.append(frame)
-                
-    #     return frame_data_list
-
     def calculate_motor_states(self):
-        frame_list = []
 
         motor_df = pd.DataFrame(columns=['time', 'dir', 'force', 'length', 'fil_id', 'couple_id'])
 
         for frame in self.frame_data_list:
-            couple_list = []
-
             frame_df = frame.temp_dataframe
             
             for couple_id, df_couple in frame_df.groupby('identity'):
@@ -80,30 +57,28 @@ class KeffData(Simulation):
                                  'force': force_vec1, \
                                  'length': float(length1), \
                                  'fil_id': int(fiber1_id), \
-                                 'couple_id': couple_id }
+                                 'couple_id': int(couple_id) }
                 
                 f_motor2_dict = {'time': frame.time, \
                                  'dir': dir_vec2, \
                                  'force': force_vec2, \
                                  'length': float(length2), \
                                  'fil_id': int(fiber2_id), \
-                                 'couple_id': couple_id }
-
-                couple_list.append(f_motor1_dict)
-                couple_list.append(f_motor2_dict)
+                                 'couple_id': int(couple_id) }
 
                 motor_df = pd.concat([ motor_df, \
                                        pd.DataFrame([f_motor1_dict]), \
                                        pd.DataFrame([f_motor2_dict]) ])
-
-            tmp_dict = {'time': frame.time, 'couple_data': couple_list}
-            frame_list.append(tmp_dict)
-        
-        return (frame_list, motor_df)
+        return motor_df
 
     def calculate_k_eff(self):
 
         self.motor_df = self.motor_df.reindex(columns=self.motor_df.columns.tolist() + ['f_net', 'f_net_mag', 'n', 'k_eff'])
+
+        # need to set to 0 instead of default NaN
+        # otherwise will not be able to assign valency (n) as int
+        # (NaN cannot be converted to int, all values in col must be same type)
+        self.motor_df['n'] = self.motor_df['n'].apply(lambda x: int(0))
 
         for time, time_df in self.motor_df.groupby('time'):
             for fil_id, fil_df in time_df.groupby('fil_id'):
@@ -133,16 +108,20 @@ class KeffData(Simulation):
 
                     motor_couple_id_mask = self.motor_df['couple_id'] == couple_id
 
+                    all_masks = motor_time_mask & motor_fil_id_mask & motor_couple_id_mask
 
                     # need to finish !!!
-                    self.motor_df.loc[motor_time_mask & motor_fil_id_mask & motor_couple_id_mask]['f_net'] = [f_net_vec]
-                    self.motor_df.loc[motor_time_mask & motor_fil_id_mask & motor_couple_id_mask]['n'] = valency
-                    self.motor_df.loc[motor_time_mask & motor_fil_id_mask & motor_couple_id_mask]['f_net_mag'] = f_net_mag
-                    self.motor_df.loc[motor_time_mask & motor_fil_id_mask & motor_couple_id_mask]['k_eff'] = k_eff
+                    self.motor_df.loc[all_masks, 'f_net'] = \
+                        self.motor_df.loc[all_masks,'f_net'].apply(lambda x: f_net_vec)
 
-        
-        breakpoint()
+                    self.motor_df.loc[all_masks, 'n'] = \
+                        self.motor_df.loc[all_masks, 'n'].apply(lambda x: int(valency))
 
+                    self.motor_df.loc[all_masks, 'f_net_mag'] = \
+                        self.motor_df.loc[all_masks, 'f_net_mag'].apply(lambda x: float(f_net_mag))
+
+                    self.motor_df.loc[all_masks, 'k_eff'] = \
+                        self.motor_df.loc[all_masks, 'k_eff'].apply(lambda x: float(k_eff))
 
 if __name__=="__main__":
     column_list = ['identity', \
