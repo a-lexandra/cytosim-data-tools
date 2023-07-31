@@ -54,12 +54,12 @@ def test_calculate_motor_states(mySimulation):
                    for x in mySimulation.frame_data_list)
 
 def test_calculate_k_eff(mySimulation):
-    assert type(mySimulation.motor_df) == pd.DataFrame
+    assert type(mySimulation.output_df) == pd.DataFrame
 
-    for entry in mySimulation.motor_df['df_mag']:
+    for entry in mySimulation.output_df['df']:
         assert type(entry) == float
     
-    for entry in mySimulation.motor_df['dk_eff']:
+    for entry in mySimulation.output_df['dk']:
         assert type(entry) == float
 
 def test_write_output(mySimulation):

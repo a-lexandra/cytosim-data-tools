@@ -14,7 +14,7 @@ class KeffData(Simulation):
             self.motor_df = self.calculate_motor_states()
 
             # appends columns with k_eff related data to self.motor_df
-            self.calculate_k_eff()
+            self.output_df = self.calculate_k_eff()
 
             self.write_output()
 
@@ -94,16 +94,14 @@ class KeffData(Simulation):
 
         k_eff = k + dk
         """
-        self.motor_df = self.motor_df.reindex(columns=self.motor_df.columns.tolist() + ['df_mag', 'dk_eff'])
+        
+        output_df = pd.DataFrame(columns=['time', 'couple_id', 'length', 'df', 'dk'])
+        # self.motor_df = self.motor_df.reindex(columns=self.motor_df.columns.tolist() + ['df_mag', 'dk_eff'])
+        couple_not_recorded = True
 
         for time, time_df in self.motor_df.groupby('time'):
-            motor_time_mask = self.motor_df['time'] == time
-
             for couple_id, couple_df in time_df.groupby('couple_id'):
-
-                f_ext_motor_mag = 0.0
-
-                motor_couple_id_mask = self.motor_df['couple_id'] == couple_id
+                df = 0.0
 
                 for fil_id, fil_df in couple_df.groupby('fil_id'):
                     fil_time_mask = self.f_ext_df['time'] == time
@@ -121,33 +119,38 @@ class KeffData(Simulation):
                     f_ext_motor_proj = np.dot(couple_df.loc[motor_fil_id_mask, 'force'].values[0], f_ext_fil/valency) \
                                        / np.linalg.norm(couple_df.loc[motor_fil_id_mask, 'force'].values[0])
 
-                    f_ext_motor_mag += f_ext_motor_proj
+                    df += f_ext_motor_proj
 
-                f_net_mag = f_ext_motor_mag/2 
+                df_avg= df/2 
 
                 if couple_df['length'].values[0] > 0:
-                    k_eff = f_net_mag / couple_df['length'].values[0]
+                    dk = df_avg/ couple_df['length'].values[0]
                 else:
-                    k_eff = float('nan')
+                    dk = float('nan')
 
-                all_masks = motor_time_mask & motor_couple_id_mask
+                if couple_not_recorded:
+                    tmp_dict = {'time': time, \
+                                'couple_id': couple_id, \
+                                'length': couple_df['length'].values[0], \
+                                'df': df_avg, \
+                                'dk': dk } 
+                    
+                    output_df = pd.concat([ output_df, pd.DataFrame([tmp_dict]) ])
 
-                if self.motor_df.loc[all_masks, 'df_mag'] is not None:
-                    self.motor_df.loc[all_masks, 'df_mag'] = \
-                        self.motor_df.loc[all_masks, 'df_mag'].apply(lambda x: float(f_net_mag))
+                motor_time_mask = output_df['time'] == time
+                motor_couple_id_mask = output_df['couple_id'] == couple_id  
 
-                if self.motor_df.loc[all_masks, 'dk_eff'] is not None:
-                    self.motor_df.loc[all_masks, 'dk_eff'] = \
-                        self.motor_df.loc[all_masks, 'dk_eff'].apply(lambda x: float(k_eff))      
-
+                couple_not_recorded = not (motor_time_mask & motor_couple_id_mask).any()
+        
+        return output_df
+  
     def write_output(self):
-        # need to append '#' to header row for compatibility with gnuplot and np.loadtxt()
-        notna_mask = self.motor_df['dk_eff'].notna()
+        notna_mask = self.output_df['dk'].notna()
 
-        last_time = self.motor_df['time'].to_numpy().max()
-        time_mask = self.motor_df['time'] == last_time
+        last_time = self.output_df['time'].to_numpy().max()
+        time_mask = self.output_df['time'] == last_time
 
-        self.motor_df.loc[ notna_mask & time_mask, 'dk_eff' ].to_csv(self.args.ofile, header=True, index=None, sep="\t")
+        self.output_df.loc[ notna_mask, 'dk' ].to_csv(self.args.ofile, header=['# dk'], index=None, sep="\t")
 
 if __name__=="__main__":
     argv = ['--prefixframe', 'report', \
