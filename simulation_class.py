@@ -27,7 +27,8 @@ class Simulation():
         self.frame_data_list = self.load_frame_data()
         
     def __delete__(self):
-        pass
+        for frame in self.frame_data_list:
+            del frame
 
     def get_args(self, argv):
         if argv != sys.argv[1:]:
@@ -35,11 +36,13 @@ class Simulation():
 
         self.parser.add_argument('--prefixframe', '-p', type=str, default='', help='prefix for file pattern of frame-by-frame data files')
         self.parser.add_argument('--suffixframe', '-s', type=str, default='', help='suffix for file pattern of frame-by-frame data files')
-        self.parser.add_argument('--extframe', '-e', type=str, help='extension for files of frame-by-frame data')
+        self.parser.add_argument('--extframe', '-e', type=str, default='', help='extension for files of frame-by-frame data')
         self.parser.add_argument('--ifilesimulation', '-i', type=str, default='', help='input file with data for the whole simulation (multiple frames)')
 
         # https://stackoverflow.com/a/31347222
         self.parser.add_argument('--ifilecolnames', '-c', type=str, default='', help='file with column names for whole simulation input file')
+
+        self.parser.add_argument('--ofile', '-o', type=str, default='k_eff.dat', help='name for the file to write output data')
 
     def get_frame_filename_pattern(self):
         # assemble prefix + * + suffix + extension into a match pattern 
@@ -99,7 +102,12 @@ class Simulation():
             frame = Data(argv=['--ifile', path.name], \
                          column_list=self.column_list)
             frame_data_list.append(frame)
-                
+
+        def sort_frame_by_time(f):
+            return f.time 
+
+        frame_data_list.sort(key=sort_frame_by_time)
+
         return frame_data_list
 
 if __name__=="__main__":

@@ -53,8 +53,10 @@ def test_get_args(mySimulation):
 
     # Check valid format of filename
     # Use raw string for regex search
-    m_fname_sim = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ifilesimulation)
-    assert m_fname_sim
+    m_ifname_sim = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ifilesimulation)
+    assert m_ifname_sim
+
+    m_ofname = re.search(r'^[A-Za-z0-9]+\.[A-Za-z0-9]+$', mySimulation.args.ofile)
 
     assert type(mySimulation.args.ifilecolnames) == str
     

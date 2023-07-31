@@ -64,4 +64,7 @@ def test_calculate_k_eff(mySimulation):
     
     for entry in mySimulation.motor_df['k_eff']:
         assert type(entry) == float
-    
+
+def test_write_output(mySimulation):
+    pass
+    # check that output file exists after writing

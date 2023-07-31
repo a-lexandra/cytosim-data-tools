@@ -16,8 +16,10 @@ class KeffData(Simulation):
             # appends columns with k_eff related data to self.motor_df
             self.calculate_k_eff()
 
+            self.write_output()
+
     def __delete__(self):
-        pass
+        super().__delete__()
 
     def calculate_motor_states(self):
 
@@ -25,6 +27,8 @@ class KeffData(Simulation):
 
         for frame in self.frame_data_list:
             frame_df = frame.temp_dataframe
+
+            print(frame.time)
             
             for couple_id, df_couple in frame_df.groupby('identity'):
                 dir_vec1 = np.array( [ df_couple['pos2X'] - df_couple['pos1X'] , \
@@ -69,6 +73,9 @@ class KeffData(Simulation):
                 motor_df = pd.concat([ motor_df, \
                                        pd.DataFrame([f_motor1_dict]), \
                                        pd.DataFrame([f_motor2_dict]) ])
+        
+        motor_df.sort_values(by=['time'], inplace=True)
+
         return motor_df
 
     def calculate_k_eff(self):
@@ -81,6 +88,7 @@ class KeffData(Simulation):
         self.motor_df['n'] = self.motor_df['n'].apply(lambda x: int(0))
 
         for time, time_df in self.motor_df.groupby('time'):
+            print(time)
             for fil_id, fil_df in time_df.groupby('fil_id'):
                 valency = fil_df.shape[0]
 
@@ -123,12 +131,27 @@ class KeffData(Simulation):
                     self.motor_df.loc[all_masks, 'k_eff'] = \
                         self.motor_df.loc[all_masks, 'k_eff'].apply(lambda x: float(k_eff))
 
+    def write_output(self):
+        # need to append '#' to header row for compatibility with gnuplot and np.loadtxt()
+        notna_mask = self.motor_df['k_eff'].notna()
+
+        last_time = self.motor_df['time'].to_numpy().max()
+        time_mask = self.motor_df['time']==last_time
+        print(self.args.ofile)
+        self.motor_df.loc[ notna_mask & time_mask, 'k_eff' ].to_csv(self.args.ofile, header=True, index=None, sep="\t")
+
 if __name__=="__main__":
+    argv = ['--prefixframe', 'report', \
+            '--suffixframe', '', \
+            '--extframe', 'txt', \
+            '--ifilesimulation', 'forces.dat', \
+            '--ifilecolnames', 'forces.cols' ]
+
     column_list = ['identity', \
                    'fiber1', 'pos1X', 'pos1Y', \
                    'fiber2', 'pos2X', 'pos2Y',\
                    'force']
 
-    mySim = Simulation(column_list)
+    mySim = KeffData(argv=argv, column_list=column_list)
 
     del mySim
