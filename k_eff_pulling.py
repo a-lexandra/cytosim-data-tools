@@ -79,66 +79,76 @@ class KeffData(Simulation):
         return motor_df
 
     def calculate_k_eff(self):
+        """Calculate the external force 'contribution' to the motor force vector.
 
-        self.motor_df = self.motor_df.reindex(columns=self.motor_df.columns.tolist() + ['f_net', 'f_net_mag', 'n', 'k_eff'])
+        Motor has two hands, each attached to a filament.
+        Each filament experiences an extrnal force.
+        Distribute the external force across n motors bound to a filament. 
+        Find the augmentation to the motor force by calculating projection of external
+        force onto the motor force.
 
-        # need to set to 0 instead of default NaN
-        # otherwise will not be able to assign valency (n) as int
-        # (NaN cannot be converted to int, all values in col must be same type)
-        self.motor_df['n'] = self.motor_df['n'].apply(lambda x: int(0))
+        df_m1 = (f_ext1/n1).f_m1
+        df_m2 = (f_ext2/n2).f_m2
+
+        Average motor force is augmented by 1/2(df_m1+df_m2) -> dk*l_m
+        l_m -> motor extension
+
+        k_eff = k + dk
+        """
+        self.motor_df = self.motor_df.reindex(columns=self.motor_df.columns.tolist() + ['df_mag', 'dk_eff'])
 
         for time, time_df in self.motor_df.groupby('time'):
-            print(time)
-            for fil_id, fil_df in time_df.groupby('fil_id'):
-                valency = fil_df.shape[0]
+            motor_time_mask = self.motor_df['time'] == time
 
-                f_ext_time_mask = self.f_ext_df['time'] == time
-                f_ext_fil_id_mask = self.f_ext_df['fil_id'] == fil_id
+            for couple_id, couple_df in time_df.groupby('couple_id'):
 
-                fil_f_ext_df = self.f_ext_df[ f_ext_time_mask & f_ext_fil_id_mask ]
+                f_ext_motor_mag = 0.0
 
-                motor_time_mask = self.motor_df['time'] == time
-                motor_fil_id_mask = self.motor_df['fil_id'] == fil_id
+                motor_couple_id_mask = self.motor_df['couple_id'] == couple_id
 
-                time_fil_df = self.motor_df[motor_time_mask & motor_fil_id_mask]
+                for fil_id, fil_df in couple_df.groupby('fil_id'):
+                    fil_time_mask = self.f_ext_df['time'] == time
+                    fil_fil_id_mask = self.f_ext_df['fil_id'] == fil_id
 
-                for couple_id, couple_df in time_fil_df.groupby('couple_id'):
-                    f_ext_vec = np.array([fil_f_ext_df['f_x'].values, fil_f_ext_df['f_y'].values]).flatten()
+                    f_ext_fil = np.array([self.f_ext_df.loc[fil_time_mask & fil_fil_id_mask, 'f_x'].values, 
+                                          self.f_ext_df.loc[fil_time_mask & fil_fil_id_mask, 'f_y'].values]).flatten()
 
-                    f_net_vec = couple_df['force'].values[0] + f_ext_vec/valency
+                    fil_id_mask = time_df['fil_id'] == fil_id
 
-                    f_net_mag = np.linalg.norm(f_net_vec)
+                    valency = time_df[fil_id_mask].shape[0]
 
-                    if couple_df['length'].values[0] > 0:
-                        k_eff = f_net_mag / couple_df['length'].values[0]
-                    else:
-                        k_eff = float('nan')
+                    motor_fil_id_mask = couple_df['fil_id'] == fil_id
 
-                    motor_couple_id_mask = self.motor_df['couple_id'] == couple_id
+                    f_ext_motor_proj = np.dot(couple_df.loc[motor_fil_id_mask, 'force'].values[0], f_ext_fil/valency) \
+                                       / np.linalg.norm(couple_df.loc[motor_fil_id_mask, 'force'].values[0])
 
-                    all_masks = motor_time_mask & motor_fil_id_mask & motor_couple_id_mask
+                    f_ext_motor_mag += f_ext_motor_proj
 
-                    # need to finish !!!
-                    self.motor_df.loc[all_masks, 'f_net'] = \
-                        self.motor_df.loc[all_masks,'f_net'].apply(lambda x: f_net_vec)
+                f_net_mag = f_ext_motor_mag/2 
 
-                    self.motor_df.loc[all_masks, 'n'] = \
-                        self.motor_df.loc[all_masks, 'n'].apply(lambda x: int(valency))
+                if couple_df['length'].values[0] > 0:
+                    k_eff = f_net_mag / couple_df['length'].values[0]
+                else:
+                    k_eff = float('nan')
 
-                    self.motor_df.loc[all_masks, 'f_net_mag'] = \
-                        self.motor_df.loc[all_masks, 'f_net_mag'].apply(lambda x: float(f_net_mag))
+                all_masks = motor_time_mask & motor_couple_id_mask
 
-                    self.motor_df.loc[all_masks, 'k_eff'] = \
-                        self.motor_df.loc[all_masks, 'k_eff'].apply(lambda x: float(k_eff))
+                if self.motor_df.loc[all_masks, 'df_mag'] is not None:
+                    self.motor_df.loc[all_masks, 'df_mag'] = \
+                        self.motor_df.loc[all_masks, 'df_mag'].apply(lambda x: float(f_net_mag))
+
+                if self.motor_df.loc[all_masks, 'dk_eff'] is not None:
+                    self.motor_df.loc[all_masks, 'dk_eff'] = \
+                        self.motor_df.loc[all_masks, 'dk_eff'].apply(lambda x: float(k_eff))      
 
     def write_output(self):
         # need to append '#' to header row for compatibility with gnuplot and np.loadtxt()
-        notna_mask = self.motor_df['k_eff'].notna()
+        notna_mask = self.motor_df['dk_eff'].notna()
 
         last_time = self.motor_df['time'].to_numpy().max()
-        time_mask = self.motor_df['time']==last_time
-        print(self.args.ofile)
-        self.motor_df.loc[ notna_mask & time_mask, 'k_eff' ].to_csv(self.args.ofile, header=True, index=None, sep="\t")
+        time_mask = self.motor_df['time'] == last_time
+
+        self.motor_df.loc[ notna_mask & time_mask, 'dk_eff' ].to_csv(self.args.ofile, header=True, index=None, sep="\t")
 
 if __name__=="__main__":
     argv = ['--prefixframe', 'report', \

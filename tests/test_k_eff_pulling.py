@@ -52,17 +52,10 @@ def test_calculate_motor_states(mySimulation):
 def test_calculate_k_eff(mySimulation):
     assert type(mySimulation.motor_df) == pd.DataFrame
 
-    for entry in mySimulation.motor_df['f_net']:
-        assert type(entry) == np.ndarray
-        assert entry.shape == (2,)
-
-    for entry in mySimulation.motor_df['f_net_mag']:
+    for entry in mySimulation.motor_df['df_mag']:
         assert type(entry) == float
     
-    for entry in mySimulation.motor_df['n']:
-        assert type(entry) == int
-    
-    for entry in mySimulation.motor_df['k_eff']:
+    for entry in mySimulation.motor_df['dk_eff']:
         assert type(entry) == float
 
 def test_write_output(mySimulation):
