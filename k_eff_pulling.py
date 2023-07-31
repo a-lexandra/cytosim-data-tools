@@ -26,53 +26,52 @@ class KeffData(Simulation):
         motor_df = pd.DataFrame(columns=['time', 'dir', 'force', 'length', 'fil_id', 'couple_id'])
 
         for frame in self.frame_data_list:
-            frame_df = frame.temp_dataframe
+            if frame.time in self.frame_time_list:
+                frame_df = frame.temp_dataframe
 
-            print(frame.time)
-            
-            for couple_id, df_couple in frame_df.groupby('identity'):
-                dir_vec1 = np.array( [ df_couple['pos2X'] - df_couple['pos1X'] , \
-                                    df_couple['pos2Y'] - df_couple['pos1Y'] ] ).flatten()
+                for couple_id, df_couple in frame_df.groupby('identity'):
+                    dir_vec1 = np.array( [ df_couple['pos2X'] - df_couple['pos1X'] , \
+                                        df_couple['pos2Y'] - df_couple['pos1Y'] ] ).flatten()
 
-                dir_vec2 = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
-                                    df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
+                    dir_vec2 = np.array( [ df_couple['pos1X'] - df_couple['pos2X'] , \
+                                        df_couple['pos1Y'] - df_couple['pos2Y'] ] ).flatten()
 
-                length1 = np.linalg.norm(dir_vec1)
-                length2 = np.linalg.norm(dir_vec2)
+                    length1 = np.linalg.norm(dir_vec1)
+                    length2 = np.linalg.norm(dir_vec2)
 
-                angle1 = np.arctan2(dir_vec1[1], dir_vec1[0])
-                angle2 = np.arctan2(dir_vec2[1], dir_vec2[0])
+                    angle1 = np.arctan2(dir_vec1[1], dir_vec1[0])
+                    angle2 = np.arctan2(dir_vec2[1], dir_vec2[0])
 
-                x1_force = np.cos(angle1)*df_couple['force'].values[0]
-                y1_force = np.sin(angle1)*df_couple['force'].values[0]
+                    x1_force = np.cos(angle1)*df_couple['force'].values[0]
+                    y1_force = np.sin(angle1)*df_couple['force'].values[0]
 
-                force_vec1 = np.array([x1_force, y1_force])
+                    force_vec1 = np.array([x1_force, y1_force])
 
-                x2_force = np.cos(angle2)*df_couple['force'].values[0]
-                y2_force = np.sin(angle2)*df_couple['force'].values[0]
+                    x2_force = np.cos(angle2)*df_couple['force'].values[0]
+                    y2_force = np.sin(angle2)*df_couple['force'].values[0]
 
-                force_vec2 = np.array([x2_force, y2_force])
+                    force_vec2 = np.array([x2_force, y2_force])
 
-                fiber1_id = df_couple['fiber1'].values[0]
-                fiber2_id = df_couple['fiber2'].values[0]
+                    fiber1_id = df_couple['fiber1'].values[0]
+                    fiber2_id = df_couple['fiber2'].values[0]
 
-                f_motor1_dict = {'time': frame.time, \
-                                 'dir': dir_vec1, \
-                                 'force': force_vec1, \
-                                 'length': float(length1), \
-                                 'fil_id': int(fiber1_id), \
-                                 'couple_id': int(couple_id) }
-                
-                f_motor2_dict = {'time': frame.time, \
-                                 'dir': dir_vec2, \
-                                 'force': force_vec2, \
-                                 'length': float(length2), \
-                                 'fil_id': int(fiber2_id), \
-                                 'couple_id': int(couple_id) }
+                    f_motor1_dict = {'time': frame.time, \
+                                    'dir': dir_vec1, \
+                                    'force': force_vec1, \
+                                    'length': float(length1), \
+                                    'fil_id': int(fiber1_id), \
+                                    'couple_id': int(couple_id) }
+                    
+                    f_motor2_dict = {'time': frame.time, \
+                                    'dir': dir_vec2, \
+                                    'force': force_vec2, \
+                                    'length': float(length2), \
+                                    'fil_id': int(fiber2_id), \
+                                    'couple_id': int(couple_id) }
 
-                motor_df = pd.concat([ motor_df, \
-                                       pd.DataFrame([f_motor1_dict]), \
-                                       pd.DataFrame([f_motor2_dict]) ])
+                    motor_df = pd.concat([ motor_df, \
+                                        pd.DataFrame([f_motor1_dict]), \
+                                        pd.DataFrame([f_motor2_dict]) ])
         
         motor_df.sort_values(by=['time'], inplace=True)
 

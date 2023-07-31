@@ -49,6 +49,10 @@ def test_calculate_motor_states(mySimulation):
     for entry in mySimulation.motor_df['couple_id']:
         assert type(entry) == int
 
+    assert mySimulation.motor_df.shape[0]/2 \
+            == sum(x.temp_dataframe.shape[0] \
+                   for x in mySimulation.frame_data_list)
+
 def test_calculate_k_eff(mySimulation):
     assert type(mySimulation.motor_df) == pd.DataFrame
 

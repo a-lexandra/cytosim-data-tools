@@ -24,7 +24,7 @@ class Simulation():
 
         self.frame_filepath_list = self.get_frame_filepaths()
 
-        self.frame_data_list = self.load_frame_data()
+        (self.frame_data_list, self.frame_time_list) = self.load_frame_data()
         
     def __delete__(self):
         for frame in self.frame_data_list:
@@ -96,19 +96,22 @@ class Simulation():
 
     def load_frame_data(self):
         frame_data_list = []
+        frame_time_list = []
 
         for path in self.frame_filepath_list:
             # breakpoint()
             frame = Data(argv=['--ifile', path.name], \
                          column_list=self.column_list)
             frame_data_list.append(frame)
+            frame_time_list.append(frame.time)
 
         def sort_frame_by_time(f):
             return f.time 
 
         frame_data_list.sort(key=sort_frame_by_time)
+        frame_time_list.sort()
 
-        return frame_data_list
+        return frame_data_list, frame_time_list
 
 if __name__=="__main__":
     column_list = ['identity', \

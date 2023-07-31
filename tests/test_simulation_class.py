@@ -106,3 +106,10 @@ def test_load_frame_data(mySimulation):
         assert type(frame) == Data
 
     assert len(mySimulation.frame_data_list) == len(mySimulation.frame_filepath_list)
+
+    assert type(mySimulation.frame_time_list) == list
+
+    for time in mySimulation.frame_time_list:
+        assert type(time) == float
+    
+    assert len(mySimulation.frame_time_list) == len(mySimulation.frame_filepath_list)
