@@ -42,7 +42,7 @@ class Simulation():
         # https://stackoverflow.com/a/31347222
         self.parser.add_argument('--ifilecolnames', '-c', type=str, default='', help='file with column names for whole simulation input file')
 
-        self.parser.add_argument('--ofile', '-o', type=str, default='k_eff.dat', help='name for the file to write output data')
+        self.parser.add_argument('--ofile', '-o', type=str, default='dk_eff.dat', help='name for the file to write output data')
 
     def get_frame_filename_pattern(self):
         # assemble prefix + * + suffix + extension into a match pattern 
