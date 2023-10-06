@@ -9,7 +9,7 @@ start_pt_fraction = window_fraction/5
 
 trj_list = []
 
-for trj_idx in range(32):
+for trj_idx in range(n_trj):
     slope_list = []
 
     fname = "trj" + str(trj_idx) + "/f0/rad_gyr.dat"

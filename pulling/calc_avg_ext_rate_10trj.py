@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 
 data_list = []
 
-for trj_idx in range(10):
+num_trj = 64
+
+for trj_idx in range(num_trj):
     fname = "trj" + str(trj_idx) + "/release/contraction_rate.txt"
 
     data_list.append(np.loadtxt(fname))
@@ -32,5 +34,5 @@ fig.canvas.draw()
 ax.xaxis.set_major_locator(plt.MaxNLocator(6))
 ax.yaxis.set_major_locator(plt.MaxNLocator(6))
 #plt.ylabel("contraction rate (um/s)")
-plt.savefig("contraction_avg_10trj.png")
+plt.savefig(f"contraction_avg_{num_trj}trj.png")
 
