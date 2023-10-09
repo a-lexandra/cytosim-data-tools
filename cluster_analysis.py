@@ -6,7 +6,7 @@ class Cluster(Data):
 		super().__init__(column_list=column_list)
 		if (self.args.largest == True) and ('cluster' in self.temp_dataframe.columns) :
 			self.largest_cluster_id = self.get_largest_cluster_id() ;
-			self.get_largest_cluster_data()
+			self.get_target_cluster_data()
 
 		self.total_num_fils = self.get_num_fils()
 		self.total_num_couples = self.get_num_couples()
@@ -44,7 +44,7 @@ class Cluster(Data):
 	def get_largest_cluster_id(self):
 		return self.temp_dataframe['cluster'].mode().values[0]
 
-	def get_largest_cluster_data(self):
+	def get_target_cluster_data(self):
 		for cluster_id, df_cluster in self.temp_dataframe.groupby('cluster'):
 			if cluster_id == self.largest_cluster_id:
 				self.temp_dataframe = df_cluster

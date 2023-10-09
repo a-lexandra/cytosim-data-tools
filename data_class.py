@@ -40,13 +40,16 @@ class Data():
 		self.column_list = column_list
 		self.time = None # set by preprocess_file()
 		self.preprocess_file()
-
 		self.get_relevant_columns(self.column_list)
 
 		self.output_df = pd.DataFrame()
-		if (self.args.largest == True) and ('cluster' in self.temp_dataframe.columns) :
+		if self.args.cluster is not None:
+			self.target_cluster_id = self.args.cluster
+			self.get_target_cluster_data()
+		elif (self.args.largest == True) and ('cluster' in self.temp_dataframe.columns) :
 			self.largest_cluster_id = self.get_largest_cluster_id() ;
-			self.get_largest_cluster_data()
+			self.target_cluster_id = self.largest_cluster_id
+			self.get_target_cluster_data()
 
 	def __del__(self):
 		self.delete_temp_file()
@@ -64,6 +67,7 @@ class Data():
 		self.parser.add_argument('--ofile', '-o', type=str, help='')
 		# https://stackoverflow.com/a/31347222
 		self.parser.add_argument('--largest', default=True, action=argparse.BooleanOptionalAction, help='calculate forces exerted by couples attached to filaments beloning to the largest cluster, ignore all other couples')
+		self.parser.add_argument('--cluster', '-c', type=int, default=None, help='optional: provide cluster id for which to calculate data')
 
 		
 
@@ -108,7 +112,7 @@ class Data():
 		with open(self.file_dict["input"]["path"]) as input_file, \
 			 open(self.file_dict["temp"]["path"], 'w') as temp_file:
 			for line in input_file:
-				if not (line.isspace() or ("%" in line and (not self.column_list[-2] in line))):
+				if not (line.isspace() or ("%" in line and (not self.column_list[-1] in line))):
 					temp_file.write(line.replace("%",""))
 				if "time" in line:
 					self.time=float(line.split(' ')[-1])
@@ -127,9 +131,9 @@ class Data():
 	def get_largest_cluster_id(self):
 		return self.temp_dataframe['cluster'].mode().values[0]
 
-	def get_largest_cluster_data(self):
+	def get_target_cluster_data(self):
 		for cluster_id, df_cluster in self.temp_dataframe.groupby('cluster'):
-			if cluster_id == self.largest_cluster_id:
+			if cluster_id == self.target_cluster_id:
 				self.temp_dataframe = df_cluster
 				self.write_temp_dataframe()
 
