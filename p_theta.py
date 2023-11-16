@@ -8,8 +8,33 @@ class PTheta(Data):
     def __init__(self, column_list=['identity']):
         super().__init__(column_list=column_list)
         
+        self.cluster_size = self.getClusterSize()
+
+
+    def doCalculations(self):
         self.theta_arr = self.calculateTheta()
         self.p_theta, self.p_theta_bins = self.calculatePTheta()
+
+    def getClusterSize(self):
+        fil_id_list = []
+
+        print(self.temp_dataframe)
+
+        for fil_id, df_fil in self.temp_dataframe.groupby('fiber1'):
+            fil_id_list.append(fil_id)
+
+        for fil_id, df_fil in self.temp_dataframe.groupby('fiber2'):
+            fil_id_list.append(fil_id)
+
+        fil_id_arr = np.array(fil_id_list)
+
+        unique_fil_id_arr = np.unique(fil_id_arr)
+        
+
+        num_fils = unique_fil_id_arr.shape[0]
+
+        return num_fils
+
 
     def calculateTheta(self):
         cos_theta_arr = self.temp_dataframe['cos_angle'].values
@@ -37,7 +62,7 @@ class PTheta(Data):
     def plotPTheta(self):
         ofile = Path(self.args.ifile).with_suffix(".ptheta.png")
         N_pts = self.theta_arr.shape[0]
-        title = r"t=%f s, $N_{\theta}$=%d" % (self.time, N_pts)
+        title = r"t=%f s, $N_{\theta}=$%d, $N_{f}=$%d" % (self.time, N_pts, self.cluster_size)
         plt.title(title)
         plt.hist(self.theta_arr, alpha=0.7, density=False, stacked=False)
         plt.ylim((0,300))
@@ -47,10 +72,11 @@ class PTheta(Data):
 
 if __name__=="__main__":
 
-    column_list = [ 'cluster', 'cos_angle' ]
+    column_list = [ 'cluster', 'cos_angle', 'fiber1', 'fiber2' ]
 
     myPTheta = PTheta(column_list)
 
+    myPTheta.doCalculations()
     myPTheta.writeTheta()
     myPTheta.writePTheta()
     myPTheta.plotPTheta()
