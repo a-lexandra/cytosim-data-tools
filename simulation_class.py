@@ -20,7 +20,8 @@ class Simulation():
 
         self.simulation_file_path = Path.joinpath(self.cwd, self.args.ifilesimulation)
 
-        self.simulation_df = self.load_simulation_data()
+        if os.path.getsize(self.simulation_file_path) > 0:
+            self.simulation_df = self.load_simulation_data()
 
         self.frame_filepath_list = self.get_frame_filepaths()
 
@@ -114,12 +115,16 @@ class Simulation():
         return frame_data_list, frame_time_list
 
 if __name__=="__main__":
-    column_list = ['identity', \
-                   'fiber1', 'pos1X', 'pos1Y', \
-                   'fiber2', 'pos2X', 'pos2Y',\
-                   'force']
+    #column_list = ['identity', \
+    #               'fiber1', 'pos1X', 'pos1Y', \
+    #               'fiber2', 'pos2X', 'pos2Y',\
+    #               'force']
+
+    column_list = ['class','identity','fiber1','abscissa1','pos1X','pos1Y','dirFiber1X','dirFiber1Y','fiber2','abscissa2','pos2X','pos2Y','dirFiber2X','dirFiber2Y','force','cos_angle']
 
     mySimulation = Simulation(column_list=column_list)
+
+    breakpoint()
 
     del mySimulation
 

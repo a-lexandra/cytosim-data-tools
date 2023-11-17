@@ -135,7 +135,6 @@ class Data():
 		for cluster_id, df_cluster in self.temp_dataframe.groupby('cluster'):
 			if cluster_id == self.target_cluster_id:
 				self.temp_dataframe = df_cluster
-                                print(self.temp_dataframe)
 				self.write_temp_dataframe()
 				self.largest_cluster_size = df_cluster.values.shape[0]
 
