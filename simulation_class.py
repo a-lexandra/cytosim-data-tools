@@ -4,17 +4,22 @@ import pandas as pd
 import os
 import sys
 import re
+import numpy as np
+
 
 from data_class import Data
 
 class Simulation():
-    def __init__(self, argv=sys.argv[1:], column_list=['class', 'identity']):
+    def __init__(self, argv=sys.argv[1:], column_list=['class', 'identity'], simulation_column_list=['frame', 'time', 'fil_id', 'f_posX', 'f_posY', 'f_dirX', 'f_dirY']):
         self.column_list = column_list
+        self.simulation_column_list = simulation_column_list
 
         self.cwd = Path.cwd()
         self.parser = argparse.ArgumentParser(description='')
         self.get_args(argv)
         self.args = self.parser.parse_args(argv)
+
+        self.load_config_params()
 
         self.frame_fname_search_pattern = self.get_frame_filename_pattern()
 
@@ -22,6 +27,8 @@ class Simulation():
 
         if os.path.getsize(self.simulation_file_path) > 0:
             self.simulation_df = self.load_simulation_data()
+        else:
+            self.simulation_df = None
 
         self.frame_filepath_list = self.get_frame_filepaths()
 
@@ -62,19 +69,7 @@ class Simulation():
         return fname_match_str
 
     def load_simulation_data(self):
-        col_names = []
-
-        if len(self.args.ifilecolnames) > 0:
-            col_name_file_path = Path.joinpath(self.cwd, self.args.ifilecolnames)
-            with open(col_name_file_path, 'r') as col_file:
-                lines = col_file.readlines()
-                num_lines = sum(1 for line in lines)
-
-                if num_lines == 1:
-                    for line in lines:
-                        col_names = line.strip().split(' ')
-
-        df = pd.read_csv(self.simulation_file_path, delim_whitespace=True, names=col_names)
+        df = pd.read_csv(self.simulation_file_path, delim_whitespace=True, names=self.simulation_column_list)
 
         return df
 
@@ -113,6 +108,17 @@ class Simulation():
         frame_time_list.sort()
 
         return frame_data_list, frame_time_list
+
+    def load_config_params(self):
+        with open('config.cym', 'r') as config_file:
+            lines = config_file.readlines()
+
+            for line in lines:
+                if 'unloaded_speed' in line:
+                    self.unloaded_speed = np.float(line.strip().split(' ')[-1])
+                if 'unbinding_force' in line:
+                    self.unbinding_force = np.float(line.strip().split(' ')[-1])
+
 
 if __name__=="__main__":
     #column_list = ['identity', \
