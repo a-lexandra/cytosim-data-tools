@@ -14,9 +14,12 @@ class WorkRateDensity(Simulation):
                                                   'fil_id', 'cos_theta', 
                                                   'f_e', 'f_m', 'v_m'])
 
-        self.work_rate_df = pd.DataFrame(columns=['time', 'fil_id', 'work_rate'])
+        self.work_rate_per_fil_df = pd.DataFrame(columns=['time', 'fil_id', 'work_rate'])
+
+        self.work_rate_per_motor_df = pd.DataFrame(columns=['time', 'motor_id', 'work_rate'])
 
         self.avg_cos_theta_df = pd.DataFrame(columns=['time', 'cos_theta_mean', 'cos_theta_std', 'n_fil'])
+        self.fil_pair_angles = pd.DataFrame(columns=['time', 'motor_id', 'fil_pair_angle'])
 
     def calc_cos_theta(self):
         
@@ -25,6 +28,11 @@ class WorkRateDensity(Simulation):
             
             for index, row in data_obj.temp_dataframe.iterrows():
                 motor_id = int(row['identity'])
+                fil_pair_angle = float(row['cos_angle'])
+
+                fil_pair_df = pd.DataFrame([{'time': time, 'motor_id': motor_id, 'fil_pair_angle': fil_pair_angle}])
+
+                self.fil_pair_angles = pd.concat([self.fil_pair_angles, fil_pair_df])
                 
                 fil1_id = int(row['fiber1'])
                 fil1_dir = np.array([ row['dirFiber1X'], row['dirFiber1Y'] ])
@@ -91,6 +99,7 @@ class WorkRateDensity(Simulation):
 
                     self.cos_theta_df = pd.concat([self.cos_theta_df, fil1_df, fil2_df], ignore_index=True)
         self.cos_theta_df.to_csv('cos_theta.dat', sep='\t', index=False, mode='w')
+        self.fil_pair_angles.to_csv('fil_pair_angles.dat', sep='\t', index=False, mode='w')
 
     def calc_work_rate_density_per_fil(self):
         for time, time_df in self.cos_theta_df.groupby('time'):
@@ -103,14 +112,19 @@ class WorkRateDensity(Simulation):
                     cos_theta = motor_df['cos_theta'].values[0]
                     v_m = motor_df['v_m'].values[0]
 
-                    work_rate_motor = ( f_m - f_e*cos_theta) * v_m * cos_theta
+                    #work_rate_motor = ( f_m - f_e*cos_theta) * v_m * cos_theta
+                    work_rate_motor = f_m * v_m * cos_theta
 
                     work_rate_fil += work_rate_motor
+
+                    motor_df = pd.DataFrame([{'time': time, 'motor_id': motor_id, 'work_rate': work_rate_motor}])
+                    self.work_rate_per_motor_df = pd.concat([self.work_rate_per_motor_df, motor_df])
                 
                 fil_df = pd.DataFrame([{'time': time, 'fil_id': fil_id, 'work_rate': work_rate_fil}])
-                self.work_rate_df = pd.concat([self.work_rate_df, fil_df])
+                self.work_rate_per_fil_df = pd.concat([self.work_rate_per_fil_df, fil_df])
 
-        self.work_rate_df.to_csv('work_rate.dat', sep='\t', index=False, mode='w')
+        self.work_rate_per_fil_df.to_csv('work_rate_fil.dat', sep='\t', index=False, mode='w')
+        self.work_rate_per_motor_df.to_csv('work_rate_motor.dat', sep='\t', index=False, mode='w')
 
     def calc_avg_cos_theta(self):
         for time, time_df in self.cos_theta_df.groupby('time'):
